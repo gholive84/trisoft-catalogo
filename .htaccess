@@ -4,13 +4,15 @@
 # que não correspondem a arquivos reais.
 
 Options +FollowSymLinks -Indexes
-DirectoryIndex public/index.php
+DirectoryIndex disabled
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
+    # Raiz da subpasta -> front controller
+    RewriteRule ^$ public/index.php [L]
+
     # Mapeia URLs públicas de assets/uploads para a pasta real public/
-    # Assim podemos usar /assets/... e /uploads/... nas views sem expor "public" na URL.
     RewriteRule ^assets/(.*)$ public/assets/$1 [L]
     RewriteRule ^uploads/(.*)$ public/uploads/$1 [L]
 
@@ -26,7 +28,27 @@ DirectoryIndex public/index.php
     RewriteRule ^(.*)$ public/index.php [L,QSA]
 </IfModule>
 
-# Bloqueia acesso direto a arquivos sensíveis na raiz do projeto
-<FilesMatch "^(\.env|\.env\..*|composer\.(json|lock)|\.gitignore|\.gitattributes|README\.md|package(-lock)?\.json)$">
+# Bloqueia acesso direto a arquivos sensíveis na raiz do projeto.
+# Usamos <Files> simples (sem regex complexa) — mais portável entre
+# configurações de Apache/LiteSpeed.
+<Files ".env">
+    Require all denied
+</Files>
+<Files "composer.json">
+    Require all denied
+</Files>
+<Files "composer.lock">
+    Require all denied
+</Files>
+<Files ".gitignore">
+    Require all denied
+</Files>
+<Files ".gitattributes">
+    Require all denied
+</Files>
+<Files "README.md">
+    Require all denied
+</Files>
+<FilesMatch "^\.env\.">
     Require all denied
 </FilesMatch>
