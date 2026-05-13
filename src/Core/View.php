@@ -35,7 +35,13 @@ final class View
         if ($this->layout !== null) {
             $layout = $this->layout;
             $this->layout = null;
-            $this->sectionContents['content'] = $content;
+            // Se o template não definiu explicitamente uma section 'content'
+            // (via $this->section('content') / endSection), usa o output bruto
+            // do template como conteúdo principal. Se a section foi definida,
+            // mantém o que ela capturou.
+            if (!isset($this->sectionContents['content'])) {
+                $this->sectionContents['content'] = $content;
+            }
             $content = $this->renderRaw($layout, $data);
         }
 
