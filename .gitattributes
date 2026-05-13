@@ -1,0 +1,18 @@
+# Normaliza line endings: tudo armazenado como LF no repo.
+# Diff de texto detectado automaticamente.
+* text=auto eol=lf
+
+# Forçar LF em arquivos sensíveis a quebra de linha (scripts shell, PHP).
+*.php   text eol=lf
+*.sql   text eol=lf
+*.sh    text eol=lf
+*.htaccess text eol=lf
+
+# Binários
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+*.pdf   binary

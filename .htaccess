@@ -1,0 +1,17 @@
+# Redireciona todo acesso à raiz do projeto para /public (document root efetivo).
+# Funciona em subpasta /catalogo2 ou na raiz do domínio.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Se a requisição não é para um arquivo dentro de /public, reescreve para lá.
+    RewriteCond %{REQUEST_URI} !^/public/ [NC]
+    RewriteCond %{REQUEST_URI} !^.*/public/ [NC]
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+# Bloqueia acesso direto a arquivos sensíveis na raiz
+<FilesMatch "^\.env|composer\.(json|lock)|\.htaccess|\.gitignore">
+    Require all denied
+</FilesMatch>
+
+Options -Indexes

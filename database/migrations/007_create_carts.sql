@@ -1,0 +1,13 @@
+CREATE TABLE IF NOT EXISTS carts (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT UNSIGNED NULL,
+  session_id VARCHAR(100) NULL COMMENT 'Para guests',
+  last_activity_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  abandoned_email_sent_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_carts_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_user (user_id),
+  INDEX idx_session (session_id),
+  INDEX idx_last_activity (last_activity_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

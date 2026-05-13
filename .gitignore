@@ -1,0 +1,43 @@
+# Ambiente
+.env
+.env.local
+.env.*.local
+
+# Dependências
+/vendor/
+composer.phar
+
+# Uploads do usuário (manter pastas, ignorar conteúdo)
+/public/uploads/*
+!/public/uploads/.gitkeep
+!/public/uploads/products/
+!/public/uploads/categories/
+/public/uploads/products/*
+!/public/uploads/products/.gitkeep
+/public/uploads/categories/*
+!/public/uploads/categories/.gitkeep
+
+# Storage
+/storage/logs/*
+!/storage/logs/.gitkeep
+/storage/cache/*
+!/storage/cache/.gitkeep
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Build
+/public/assets/css/app.css
+/node_modules/
+package-lock.json
+
+# Segredos e chaves
+*.pem
+*.key
+id_rsa*
+id_ed25519*

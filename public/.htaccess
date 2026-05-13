@@ -1,0 +1,36 @@
+# Front controller: tudo que não é arquivo/diretório vai para index.php
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Permite que rewrite funcione em subpastas (Hostinger/SiteGround)
+    RewriteBase /
+
+    # Força HTTPS em produção (descomentar quando confirmar SSL ativo no domínio)
+    # RewriteCond %{HTTPS} !=on
+    # RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    # Passa qualquer não-arquivo/não-pasta para o front controller
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>
+
+# Cache de assets estáticos
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/webp "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+</IfModule>
+
+# Bloqueia acesso direto a uploads que sejam scripts
+<FilesMatch "\.(php|phtml|phar)$">
+    <If "%{REQUEST_URI} =~ m#^/uploads/#">
+        Require all denied
+    </If>
+</FilesMatch>
+
+Options -Indexes
