@@ -13,6 +13,7 @@ use App\Core\Validator;
 use App\Core\View;
 use App\Repositories\UserRepository;
 use App\Services\AuthService;
+use App\Services\CartService;
 
 final class AuthController
 {
@@ -61,6 +62,8 @@ final class AuthController
             Session::flash('error', 'E-mail ou senha inválidos.');
             Response::redirect(url('login'));
         }
+
+        $this->processPostLoginIntents();
 
         $intended = Session::get('_intended_url');
         Session::forget('_intended_url');
@@ -117,8 +120,13 @@ final class AuthController
 
         $this->auth->register($data);
 
+        $this->processPostLoginIntents();
+
+        $intended = Session::get('_intended_url');
+        Session::forget('_intended_url');
+
         Session::flash('success', 'Cadastro realizado! Bem-vindo(a).');
-        Response::redirect(url('minha-conta'));
+        Response::redirect(url($intended ?: 'minha-conta'));
     }
 
     /* ---------- Logout ---------- */
@@ -138,5 +146,26 @@ final class AuthController
             'admin', 'editor', 'seller' => 'admin',
             default => 'minha-conta',
         };
+    }
+
+    /**
+     * Processa intenções registradas antes do login (ex.: adicionar produto ao carrinho).
+     * Chamada após autenticação bem-sucedida (login ou cadastro).
+     */
+    private function processPostLoginIntents(): void
+    {
+        $pending = Session::get('_pending_cart_add');
+        if (is_array($pending) && !empty($pending['product_id'])) {
+            try {
+                (new CartService())->add(
+                    (int) $pending['product_id'],
+                    max(1, (int) ($pending['quantity'] ?? 1))
+                );
+                Session::flash('success', 'Item adicionado ao seu orçamento.');
+            } catch (\Throwable $e) {
+                Logger::warning('Falha ao aplicar intenção pendente', ['error' => $e->getMessage()]);
+            }
+            Session::forget('_pending_cart_add');
+        }
     }
 }

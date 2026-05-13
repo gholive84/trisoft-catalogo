@@ -21,11 +21,17 @@
         </form>
 
         <nav class="flex items-center gap-4 ml-auto text-sm">
-            <a href="<?= e(url('carrinho')) ?>" class="text-gray-700 hover:text-gray-900 flex items-center gap-1">
+            <?php $cartBadge = auth() ? (new \App\Services\CartService())->badge() : 0; ?>
+            <a href="<?= e(url('carrinho')) ?>" class="relative text-gray-700 hover:text-gray-900 flex items-center gap-1">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
                 </svg>
                 <span class="hidden sm:inline">Carrinho</span>
+                <?php if ($cartBadge > 0): ?>
+                    <span class="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
+                        <?= e((string) $cartBadge) ?>
+                    </span>
+                <?php endif; ?>
             </a>
 
             <?php if (auth()): ?>
