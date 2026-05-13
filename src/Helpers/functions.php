@@ -138,6 +138,29 @@ if (!function_exists('has_role')) {
     }
 }
 
+if (!function_exists('can_see_prices')) {
+    /**
+     * Regra de visibilidade de preços (decisão do owner em 2026-05-13):
+     * apenas staff (admin, editor, seller) vê preço de venda.
+     * Cliente logado e visitante NÃO veem — recebem CTA de orçamento.
+     */
+    function can_see_prices(): bool
+    {
+        return Auth::isStaff();
+    }
+}
+
+if (!function_exists('can_see_cost')) {
+    /**
+     * Custo do produto: apenas vendedor e admin.
+     * Editor faz CRUD de produtos mas não vê margem.
+     */
+    function can_see_cost(): bool
+    {
+        return Auth::hasRole('admin', 'seller');
+    }
+}
+
 if (!function_exists('slugify')) {
     /**
      * Converte uma string em slug ASCII compatível com URLs.

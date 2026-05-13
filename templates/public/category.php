@@ -35,29 +35,31 @@ $crumbItems = array_map(
         <form method="get" class="bg-white border border-gray-200 rounded-xl p-4 space-y-4">
             <h3 class="font-semibold text-gray-900">Filtros</h3>
 
-            <div>
-                <label class="block text-xs text-gray-500 uppercase tracking-wide mb-1">Faixa de preço</label>
-                <div class="flex gap-2">
-                    <input type="number" name="min" value="<?= e($minPrice ?? '') ?>" placeholder="Mín"
-                           step="0.01" min="0"
-                           class="w-full text-sm border border-gray-300 rounded px-2 py-1.5 focus:ring-2 focus:ring-gray-900">
-                    <input type="number" name="max" value="<?= e($maxPrice ?? '') ?>" placeholder="Máx"
-                           step="0.01" min="0"
-                           class="w-full text-sm border border-gray-300 rounded px-2 py-1.5 focus:ring-2 focus:ring-gray-900">
+            <?php if (can_see_prices()): ?>
+                <div>
+                    <label class="block text-xs text-gray-500 uppercase tracking-wide mb-1">Faixa de preço</label>
+                    <div class="flex gap-2">
+                        <input type="number" name="min" value="<?= e($minPrice ?? '') ?>" placeholder="Mín"
+                               step="0.01" min="0"
+                               class="w-full text-sm border border-gray-300 rounded px-2 py-1.5 focus:ring-2 focus:ring-gray-900">
+                        <input type="number" name="max" value="<?= e($maxPrice ?? '') ?>" placeholder="Máx"
+                               step="0.01" min="0"
+                               class="w-full text-sm border border-gray-300 rounded px-2 py-1.5 focus:ring-2 focus:ring-gray-900">
+                    </div>
                 </div>
-            </div>
+            <?php endif; ?>
 
             <div>
                 <label class="block text-xs text-gray-500 uppercase tracking-wide mb-1">Ordenar por</label>
                 <select name="sort" class="w-full text-sm border border-gray-300 rounded px-2 py-1.5 focus:ring-2 focus:ring-gray-900">
                     <?php
-                    $opts = [
-                        'newest'     => 'Mais recentes',
-                        'price_asc'  => 'Menor preço',
-                        'price_desc' => 'Maior preço',
-                        'name_asc'   => 'Nome A-Z',
-                        'name_desc'  => 'Nome Z-A',
-                    ];
+                    $opts = ['newest' => 'Mais recentes'];
+                    if (can_see_prices()) {
+                        $opts['price_asc']  = 'Menor preço';
+                        $opts['price_desc'] = 'Maior preço';
+                    }
+                    $opts['name_asc']  = 'Nome A-Z';
+                    $opts['name_desc'] = 'Nome Z-A';
                     foreach ($opts as $val => $label):
                         $sel = $sort === $val ? ' selected' : '';
                     ?>

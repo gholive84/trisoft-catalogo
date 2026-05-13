@@ -29,7 +29,11 @@ $href = url('produto/' . $product['slug']);
         <?php endif; ?>
         <div class="mt-auto pt-3 flex items-center justify-between">
             <div>
-                <div class="text-lg font-bold text-gray-900"><?= e(money_br((float) $product['price'])) ?></div>
+                <?php if (can_see_prices()): ?>
+                    <div class="text-lg font-bold text-gray-900"><?= e(money_br((float) $product['price'])) ?></div>
+                <?php else: ?>
+                    <div class="text-sm font-medium text-gray-900">Solicite seu orçamento</div>
+                <?php endif; ?>
                 <div class="text-[10px] text-gray-400 uppercase tracking-wide">SKU <?= e($product['sku']) ?></div>
             </div>
             <span class="text-xs text-gray-600 group-hover:text-gray-900">Ver →</span>

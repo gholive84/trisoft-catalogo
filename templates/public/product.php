@@ -48,10 +48,24 @@ $mainImage = $images[0]['file_path'] ?? null;
         <h1 class="text-3xl font-bold text-gray-900"><?= e($product['name']) ?></h1>
         <div class="text-xs text-gray-500 uppercase tracking-wide mt-1">SKU <?= e($product['sku']) ?></div>
 
-        <div class="mt-6 flex items-baseline gap-3">
-            <span class="text-3xl font-bold text-gray-900"><?= e(money_br((float) $product['price'])) ?></span>
-            <span class="text-sm text-gray-500">à vista</span>
-        </div>
+        <?php if (can_see_prices()): ?>
+            <div class="mt-6 flex items-baseline gap-3">
+                <span class="text-3xl font-bold text-gray-900"><?= e(money_br((float) $product['price'])) ?></span>
+                <span class="text-sm text-gray-500">à vista</span>
+                <?php if (can_see_cost() && !empty($product['cost'])): ?>
+                    <span class="ml-2 text-xs text-gray-400" title="Custo (visível apenas para vendedor/admin)">
+                        custo <?= e(money_br((float) $product['cost'])) ?>
+                    </span>
+                <?php endif; ?>
+            </div>
+        <?php else: ?>
+            <div class="mt-6 bg-gray-50 border border-gray-200 rounded-xl p-4">
+                <div class="text-sm text-gray-500 uppercase tracking-wide">Preço sob consulta</div>
+                <p class="text-gray-700 text-sm mt-1">
+                    Solicite seu orçamento personalizado. Nossa equipe responde em até 1 dia útil.
+                </p>
+            </div>
+        <?php endif; ?>
 
         <?php if (!empty($product['short_description'])): ?>
             <p class="text-gray-700 mt-4"><?= e($product['short_description']) ?></p>

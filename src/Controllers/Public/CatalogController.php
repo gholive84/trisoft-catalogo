@@ -38,10 +38,19 @@ final class CatalogController
         $perPage = (int) $request->query('per', 12);
         $sort    = (string) $request->query('sort', 'newest');
 
-        $minPrice = $request->query('min') !== null && $request->query('min') !== ''
+        // Filtros e ordenação por preço só fazem sentido para staff (que vê preço).
+        // Para visitantes/customers, ignoramos esses parâmetros para evitar leak de preço
+        // via probing (ex.: ?min=100&max=200).
+        $canPrice = \App\Core\Auth::isStaff();
+
+        $minPrice = $canPrice && $request->query('min') !== null && $request->query('min') !== ''
             ? (float) $request->query('min') : null;
-        $maxPrice = $request->query('max') !== null && $request->query('max') !== ''
+        $maxPrice = $canPrice && $request->query('max') !== null && $request->query('max') !== ''
             ? (float) $request->query('max') : null;
+
+        if (!$canPrice && in_array($sort, ['price_asc', 'price_desc'], true)) {
+            $sort = 'newest';
+        }
 
         $catIds = $this->cats->descendantIds((int) $category['id']);
 
