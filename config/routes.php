@@ -17,7 +17,10 @@ use App\Core\Router;
 use App\Controllers\Admin\DashboardController as AdminDashboard;
 use App\Controllers\Customer\DashboardController as CustomerDashboard;
 use App\Controllers\Public\AuthController;
+use App\Controllers\Public\CatalogController;
 use App\Controllers\Public\HomeController;
+use App\Controllers\Public\ProductController;
+use App\Controllers\Public\SearchController;
 use App\Middleware\AuthMiddleware;
 use App\Middleware\CsrfMiddleware;
 use App\Middleware\RoleMiddleware;
@@ -27,17 +30,26 @@ use App\Middleware\RoleMiddleware;
 // ============== PÚBLICO ==============
 $router->get('/', [HomeController::class, 'index']);
 
+// Catálogo
+$router->get('/categoria/{slug}', [CatalogController::class, 'show']);
+$router->get('/produto/{slug}',   [ProductController::class, 'show']);
+$router->get('/busca',            [SearchController::class, 'index']);
+
+// Carrinho (Sprint 3) — stubs amigáveis
+$router->get('/carrinho', function () {
+    return '<!doctype html><meta charset="utf-8"><div style="font-family:sans-serif;padding:2rem">Carrinho em construção (Sprint 3). <a href="' . url('/') . '">Voltar</a></div>';
+});
+$router->post('/carrinho/adicionar', function () {
+    \App\Core\Session::flash('info', 'O carrinho será habilitado em breve.');
+    \App\Core\Response::back();
+}, [new CsrfMiddleware()]);
+
 // Auth
 $router->get('/login',    [AuthController::class, 'showLogin']);
 $router->post('/login',   [AuthController::class, 'login'],    [new CsrfMiddleware()]);
 $router->get('/cadastro', [AuthController::class, 'showRegister']);
 $router->post('/cadastro',[AuthController::class, 'register'], [new CsrfMiddleware()]);
 $router->post('/logout',  [AuthController::class, 'logout'],   [new CsrfMiddleware()]);
-
-// Stubs do catálogo (Sprint 2) — placeholders 404-amigáveis até serem implementados
-$router->get('/busca', function () {
-    return '<!doctype html><meta charset="utf-8"><div style="font-family:sans-serif;padding:2rem">Busca em construção (Sprint 2). <a href="' . url('/') . '">Voltar</a></div>';
-});
 
 // ============== ÁREA DO CLIENTE ==============
 $router->group(

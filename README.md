@@ -13,7 +13,8 @@ composer install
 cp .env.example .env
 # preencher .env com credenciais reais
 php database/migrate.php
-php database/seed.php
+php database/seed.php             # admin + settings padrão
+php database/demo_seed.php        # (opcional) categorias e produtos de exemplo
 ```
 
 Para servir localmente:
