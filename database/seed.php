@@ -39,8 +39,10 @@ $generated     = !isset($args['admin-password']);
 // settings
 $settingsFile = __DIR__ . '/seeds/initial_data.sql';
 if (file_exists($settingsFile)) {
-    foreach (array_filter(array_map('trim', explode(';', (string) file_get_contents($settingsFile)))) as $stmt) {
-        if ($stmt === '' || str_starts_with($stmt, '--')) continue;
+    $sql = (string) file_get_contents($settingsFile);
+    // Remove comentários SQL "-- ..." linha a linha antes de splitar por ';'.
+    $sql = preg_replace('/^\s*--.*$/m', '', $sql) ?? $sql;
+    foreach (array_filter(array_map('trim', explode(';', $sql))) as $stmt) {
         $pdo->exec($stmt);
     }
     fwrite(STDOUT, "✓ Settings padrão aplicados.\n");
