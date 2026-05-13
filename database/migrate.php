@@ -98,10 +98,10 @@ foreach ($files as $file) {
 
     fwrite(STDOUT, "→ Aplicando {$name}... ");
 
+    // Observação: MySQL faz implicit commit em DDL (CREATE TABLE, ALTER, etc.),
+    // então não envolvemos as migrations em transação. Cada statement aplica
+    // imediatamente; o registro em `migrations` é gravado ao final.
     try {
-        $pdo->beginTransaction();
-
-        // Divide por ';' fora de strings simples; ok para nossas migrations simples.
         foreach (splitSql($sql) as $stmt) {
             $stmt = trim($stmt);
             if ($stmt === '') {
@@ -109,15 +109,10 @@ foreach ($files as $file) {
             }
             $pdo->exec($stmt);
         }
-
         $pdo->prepare("INSERT INTO migrations (filename) VALUES (?)")->execute([$name]);
-        $pdo->commit();
         fwrite(STDOUT, "OK\n");
         $count++;
     } catch (Throwable $e) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
         fwrite(STDERR, "ERRO\n   {$e->getMessage()}\n");
         Logger::error('Migration falhou', ['file' => $name, 'error' => $e->getMessage()]);
         exit(1);
