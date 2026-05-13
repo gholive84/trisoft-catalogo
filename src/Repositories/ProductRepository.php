@@ -235,18 +235,20 @@ final class ProductRepository
      */
     public function relatedTo(int $productId, int $limit = 4): array
     {
+        // ATTR_EMULATE_PREPARES = false não permite reutilizar o mesmo
+        // placeholder — daí dois nomes diferentes para o mesmo valor.
         $sql = "SELECT DISTINCT p.*
                   FROM products p
                   JOIN product_categories pc ON pc.product_id = p.id
                  WHERE pc.category_id IN (
-                          SELECT category_id FROM product_categories WHERE product_id = :p
+                          SELECT category_id FROM product_categories WHERE product_id = :pid_a
                        )
-                   AND p.id <> :p
+                   AND p.id <> :pid_b
                    AND p.is_active = 1 AND p.deleted_at IS NULL
               ORDER BY p.created_at DESC
                  LIMIT {$limit}";
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute(['p' => $productId]);
+        $stmt->execute(['pid_a' => $productId, 'pid_b' => $productId]);
         return $this->withMainImage($stmt->fetchAll());
     }
 }

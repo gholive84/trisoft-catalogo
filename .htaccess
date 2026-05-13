@@ -1,17 +1,32 @@
-# Redireciona todo acesso à raiz do projeto para /public (document root efetivo).
-# Funciona em subpasta /catalogo2 ou na raiz do domínio.
+# Isola este projeto do WordPress da raiz e roteia tudo via /public/index.php.
+# Estratégia: rewrite direto para o front controller (que SEMPRE existe)
+# para evitar que o .htaccess do WordPress da raiz intercepte requisições
+# que não correspondem a arquivos reais.
+
+Options +FollowSymLinks -Indexes
+DirectoryIndex public/index.php
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # Se a requisição não é para um arquivo dentro de /public, reescreve para lá.
-    RewriteCond %{REQUEST_URI} !^/public/ [NC]
-    RewriteCond %{REQUEST_URI} !^.*/public/ [NC]
-    RewriteRule ^(.*)$ public/$1 [L]
+    # Mapeia URLs públicas de assets/uploads para a pasta real public/
+    # Assim podemos usar /assets/... e /uploads/... nas views sem expor "public" na URL.
+    RewriteRule ^assets/(.*)$ public/assets/$1 [L]
+    RewriteRule ^uploads/(.*)$ public/uploads/$1 [L]
+
+    # Se a requisição já é para /public/, deixa o public/.htaccess cuidar
+    RewriteCond %{REQUEST_URI} /public/
+    RewriteRule ^ - [L]
+
+    # Tudo o mais que não é arquivo real → front controller.
+    # IMPORTANTE: rewrite direto para public/index.php (não para public/$1),
+    # pois rewrite para path inexistente seria interceptado pelo .htaccess
+    # do WordPress no nível superior (que captura URLs não-arquivo/não-pasta).
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^(.*)$ public/index.php [L,QSA]
 </IfModule>
 
-# Bloqueia acesso direto a arquivos sensíveis na raiz
-<FilesMatch "^\.env|composer\.(json|lock)|\.htaccess|\.gitignore">
+# Bloqueia acesso direto a arquivos sensíveis na raiz do projeto
+<FilesMatch "^(\.env|\.env\..*|composer\.(json|lock)|\.gitignore|\.gitattributes|README\.md|package(-lock)?\.json)$">
     Require all denied
 </FilesMatch>
-
-Options -Indexes
