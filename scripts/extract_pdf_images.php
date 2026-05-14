@@ -55,7 +55,7 @@ $limit    = 0;
 $force    = false;
 $skipHero = false;
 $skipMod  = false;
-$modCrop  = '90%x12%+5%+28%'; // default: faixa horizontal central na altura da "Modulation suggestions"
+$modCrop  = '100%x16%+0%+42%'; // default: faixa "Modulation suggestions" no layout Trisoft padrão
 foreach ($args as $a) {
     if ($a === '--force')             { $force = true; continue; }
     if ($a === '--skip-hero')         { $skipHero = true; continue; }
@@ -118,29 +118,56 @@ function renderHero(string $magickBin, string $pdfPath, int $pageIdx, int $densi
 
 /**
  * Renderiza uma região específica de uma página (crop).
- * $cropSpec: formato ImageMagick "WxH+X+Y" com unidades absolutas ou %
- * (ex.: "90%x12%+5%+28%"). PNG transparente preserva fundo branco do PDF.
+ * $cropSpec: formato "WxH+X+Y" — pode usar % nas dimensões.
+ *
+ * Implementação:
+ *   1. Renderiza página completa
+ *   2. Pega dimensões reais via identify
+ *   3. Computa crop em PIXELS (não usa % do magick — buggy em offsets Y)
  */
 function renderModulation(string $magickBin, string $pdfPath, int $pageIdx, int $density, string $cropSpec, string $outFile): bool
 {
-    // Estratégia: renderiza página completa em alta res, depois crop com %
-    // (% precisa de página renderizada porque magick interpreta % com base na
-    // dimensão da imagem fonte).
     $tmpPage = $outFile . '.fullpage.png';
     $cmd1 = sprintf(
         '%s -density %d %s[%d] -background white -alpha remove -alpha off %s 2>&1',
         escapeshellcmd($magickBin), $density, escapeshellarg($pdfPath), $pageIdx,
         escapeshellarg($tmpPage)
     );
-    exec($cmd1, $output1, $rc1);
-    if ($rc1 !== 0 || !file_exists($tmpPage)) {
+    exec($cmd1, $_, $rc1);
+    if ($rc1 !== 0 || !file_exists($tmpPage)) return false;
+
+    // Identifica dimensões reais da página renderizada
+    exec(sprintf('%s -format "%%w %%h" %s 2>&1',
+        escapeshellcmd($magickBin), escapeshellarg($tmpPage)
+    ), $idOut, $rcId);
+    if ($rcId !== 0 || empty($idOut)) {
+        @unlink($tmpPage);
         return false;
     }
+    [$pageW, $pageH] = array_map('intval', explode(' ', trim($idOut[0])));
+
+    // Parseia $cropSpec: WxH+X+Y, com possíveis %
+    if (!preg_match('/^(\d+%?)x(\d+%?)\+(\d+%?)\+(\d+%?)$/', $cropSpec, $m)) {
+        @unlink($tmpPage);
+        return false;
+    }
+    $resolve = function (string $v, int $base): int {
+        if (str_ends_with($v, '%')) {
+            return (int) round(((float) rtrim($v, '%')) * $base / 100);
+        }
+        return (int) $v;
+    };
+    $cw = $resolve($m[1], $pageW);
+    $ch = $resolve($m[2], $pageH);
+    $cx = $resolve($m[3], $pageW);
+    $cy = $resolve($m[4], $pageH);
+
+    $pixelCrop = "{$cw}x{$ch}+{$cx}+{$cy}";
 
     $cmd2 = sprintf(
-        '%s %s -crop %s +repage -trim +repage -bordercolor white -border 20x20 %s 2>&1',
+        '%s %s -crop %s +repage -bordercolor white -border 10x10 %s 2>&1',
         escapeshellcmd($magickBin), escapeshellarg($tmpPage),
-        escapeshellarg($cropSpec), escapeshellarg($outFile)
+        escapeshellarg($pixelCrop), escapeshellarg($outFile)
     );
     exec($cmd2, $output2, $rc2);
     @unlink($tmpPage);
