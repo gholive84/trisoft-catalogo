@@ -12,14 +12,8 @@ $pageSubtitle = $initialCategory && !empty($initialCategory['description'])
 $initialSelected = $selectedCats ?? [];
 ?>
 
-<!-- Hero full-width com cor Trisoft (mais saturada, altura compacta) -->
-<section class="relative overflow-hidden border-b border-brand-line">
-    <!-- Background gradient com cores mais presentes -->
-    <div class="absolute inset-0 bg-gradient-to-br from-brand-blue/[0.18] via-brand-cream to-brand-green/[0.14]"></div>
-    <div class="absolute -top-24 -left-24 w-72 h-72 rounded-full bg-brand-blue/25 blur-3xl pointer-events-none"></div>
-    <div class="absolute -bottom-24 -right-24 w-72 h-72 rounded-full bg-brand-green/25 blur-3xl pointer-events-none"></div>
-    <div class="absolute top-0 right-1/3 w-56 h-56 rounded-full bg-brand-teal/15 blur-3xl pointer-events-none"></div>
-
+<!-- Hero full-width neutro (cinza claro com leve gradient) -->
+<section class="relative overflow-hidden border-b border-brand-line bg-gray-50">
     <div class="relative max-w-content mx-auto px-6 lg:px-10 py-10 lg:py-14 text-center">
         <?php if ($initialCategory): ?>
             <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/80 backdrop-blur-sm border border-brand-line text-[11px] font-semibold uppercase tracking-widest text-brand-blue mb-4">
