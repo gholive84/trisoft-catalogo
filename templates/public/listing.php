@@ -12,9 +12,29 @@ $pageSubtitle = $initialCategory && !empty($initialCategory['description'])
 $initialSelected = $selectedCats ?? [];
 ?>
 
-<section class="max-w-content mx-auto px-6 lg:px-10 pt-12 lg:pt-16 pb-6 text-center">
-    <h1 class="display text-5xl md:text-6xl lg:text-7xl text-brand-ink"><?= e($pageTitle) ?></h1>
-    <p class="text-brand-muted mt-4 text-base md:text-lg"><?= e($pageSubtitle) ?></p>
+<!-- Hero full-width com gradient suave da paleta Trisoft -->
+<section class="relative overflow-hidden border-b border-brand-line">
+    <!-- Background gradient + decorações sutis -->
+    <div class="absolute inset-0 bg-gradient-to-br from-brand-blue/[0.08] via-brand-cream to-brand-green/[0.06]"></div>
+    <div class="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-brand-blue/10 blur-3xl pointer-events-none"></div>
+    <div class="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-brand-green/10 blur-3xl pointer-events-none"></div>
+
+    <div class="relative max-w-content mx-auto px-6 lg:px-10 py-16 lg:py-24 text-center">
+        <?php if ($initialCategory): ?>
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/70 backdrop-blur-sm border border-brand-line text-[11px] font-semibold uppercase tracking-widest text-brand-blue mb-5">
+                <span class="w-1.5 h-1.5 rounded-full bg-brand-blue"></span>
+                Categoria
+            </div>
+        <?php endif; ?>
+        <h1 class="display text-5xl md:text-6xl lg:text-7xl text-brand-ink"><?= e($pageTitle) ?></h1>
+        <p class="text-brand-muted mt-4 text-base md:text-lg max-w-2xl mx-auto"><?= e($pageSubtitle) ?></p>
+
+        <?php if (isset($pagination['total']) && $pagination['total'] > 0): ?>
+            <div class="text-xs text-brand-muted/80 mt-6 uppercase tracking-widest font-medium">
+                <?= e((string) $pagination['total']) ?> produto<?= $pagination['total'] === 1 ? '' : 's' ?>
+            </div>
+        <?php endif; ?>
+    </div>
 </section>
 
 <section class="max-w-content mx-auto px-6 lg:px-10 py-8 grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-10"

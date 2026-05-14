@@ -1,0 +1,13 @@
+{
+    "name": "Catálogo Trisoft",
+    "short_name": "Trisoft",
+    "description": "Catálogo de produtos Trisoft — Revestimentos acústicos com tratamento de alta performance.",
+    "icons": [
+        { "src": "/catalogo2/assets/images/favicon-192.png", "sizes": "192x192", "type": "image/png" },
+        { "src": "/catalogo2/assets/images/favicon-512.png", "sizes": "512x512", "type": "image/png" }
+    ],
+    "theme_color": "#0071A2",
+    "background_color": "#ffffff",
+    "display": "minimal-ui",
+    "start_url": "/catalogo2/"
+}

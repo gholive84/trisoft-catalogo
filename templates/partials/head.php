@@ -13,8 +13,13 @@
 <meta name="csrf-token" content="<?= e(csrf_token()) ?>">
 <meta name="base-url" content="<?= e(\App\Core\Config::baseUrl()) ?>">
 
-<link rel="icon" type="image/png" href="<?= e(asset('images/logo-mark.png')) ?>">
-<link rel="apple-touch-icon" href="<?= e(asset('images/logo-mark.png')) ?>">
+<link rel="icon" href="<?= e(asset('images/favicon.ico')) ?>" sizes="any">
+<link rel="icon" type="image/png" sizes="16x16"   href="<?= e(asset('images/favicon-16.png')) ?>">
+<link rel="icon" type="image/png" sizes="32x32"   href="<?= e(asset('images/favicon-32.png')) ?>">
+<link rel="icon" type="image/png" sizes="192x192" href="<?= e(asset('images/favicon-192.png')) ?>">
+<link rel="apple-touch-icon"      sizes="180x180" href="<?= e(asset('images/apple-touch-icon.png')) ?>">
+<link rel="manifest"              href="<?= e(asset('site.webmanifest')) ?>">
+<meta name="theme-color" content="#0071A2">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
