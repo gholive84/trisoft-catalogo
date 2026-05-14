@@ -1,0 +1,453 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Controllers\Admin;
+
+use App\Core\Auth;
+use App\Core\Database;
+use App\Core\Logger;
+use App\Core\Request;
+use App\Core\Response;
+use App\Core\Session;
+use App\Core\Validator;
+use App\Core\View;
+use App\Repositories\CategoryRepository;
+use App\Repositories\ProductRepository;
+use App\Services\ImageUploadService;
+
+final class ProductController
+{
+    private View $view;
+    private ProductRepository $products;
+    private CategoryRepository $cats;
+    private ImageUploadService $uploads;
+    private \PDO $pdo;
+
+    public function __construct()
+    {
+        $this->view     = new View(base_path('templates'));
+        $this->products = new ProductRepository();
+        $this->cats     = new CategoryRepository();
+        $this->uploads  = new ImageUploadService();
+        $this->pdo      = Database::connection();
+    }
+
+    /* ------------------------- Listagem ------------------------- */
+
+    public function index(Request $request): string
+    {
+        $q       = trim((string) $request->query('q', ''));
+        $status  = (string) $request->query('status', '');
+        $page    = max(1, (int) $request->query('page', 1));
+        $perPage = 25;
+        $offset  = ($page - 1) * $perPage;
+
+        $where  = "p.deleted_at IS NULL";
+        $params = [];
+        if ($q !== '') {
+            $where .= " AND (p.name LIKE :q OR p.sku LIKE :q OR p.subtitle LIKE :q)";
+            $params['q'] = "%{$q}%";
+        }
+        if ($status === 'active')   $where .= " AND p.is_active = 1";
+        if ($status === 'inactive') $where .= " AND p.is_active = 0";
+        if ($status === 'featured') $where .= " AND p.is_featured = 1";
+
+        $countStmt = $this->pdo->prepare("SELECT COUNT(*) FROM products p WHERE {$where}");
+        $countStmt->execute($params);
+        $total = (int) $countStmt->fetchColumn();
+
+        $sql = "SELECT p.id, p.sku, p.name, p.subtitle, p.price, p.is_active, p.is_featured, p.updated_at,
+                       (SELECT pi.file_path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.is_main DESC, pi.sort_order ASC LIMIT 1) AS thumb,
+                       (SELECT COUNT(*) FROM product_categories pc WHERE pc.product_id = p.id) AS cat_count
+                  FROM products p
+                 WHERE {$where}
+              ORDER BY p.updated_at DESC
+                 LIMIT {$perPage} OFFSET {$offset}";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        $items = $stmt->fetchAll();
+
+        return $this->view->render('admin/products/index', [
+            'title'    => 'Produtos',
+            'items'    => $items,
+            'total'    => $total,
+            'q'        => $q,
+            'status'   => $status,
+            'page'     => $page,
+            'perPage'  => $perPage,
+            'lastPage' => max(1, (int) ceil($total / $perPage)),
+        ]);
+    }
+
+    /* ------------------------- Criar/editar ------------------------- */
+
+    public function create(Request $request): string
+    {
+        return $this->view->render('admin/products/form', [
+            'title'        => 'Novo produto',
+            'product'      => $this->emptyProduct(),
+            'images'       => [],
+            'allCategories'=> $this->cats->all(),
+            'productCats'  => [],
+            'isNew'        => true,
+        ]);
+    }
+
+    public function edit(Request $request): string
+    {
+        $id = (int) $request->param('id');
+        $product = $this->products->findById($id);
+        if ($product === null) {
+            Response::abort(404, 'Produto não encontrado.');
+        }
+
+        $images = $this->products->imagesOf($id);
+
+        $productCats = array_map(
+            fn ($c) => (int) $c['id'],
+            $this->products->categoriesOf($id)
+        );
+
+        return $this->view->render('admin/products/form', [
+            'title'        => $product['name'],
+            'product'      => $product,
+            'images'       => $images,
+            'allCategories'=> $this->cats->all(),
+            'productCats'  => $productCats,
+            'isNew'        => false,
+        ]);
+    }
+
+    public function store(Request $request): never
+    {
+        $data = $this->extractData($request);
+
+        $v = $this->validate($data, isNew: true);
+        if ($v->fails()) {
+            Session::flashInput($data);
+            Session::flash('error', $v->firstError() ?? 'Verifique os dados.');
+            Response::redirect(url('admin/produtos/novo'));
+        }
+        if ($this->skuExists($data['sku'])) {
+            Session::flashInput($data);
+            Session::flash('error', 'SKU já existe.');
+            Response::redirect(url('admin/produtos/novo'));
+        }
+        if ($this->slugExists($data['slug'])) {
+            $data['slug'] .= '-' . bin2hex(random_bytes(2));
+        }
+
+        try {
+            $this->pdo->beginTransaction();
+            $id = $this->insertProduct($data);
+            $this->syncCategories($id, $data['categories']);
+            $this->handleUploadedImages($id, $request, $data['name']);
+            $this->pdo->commit();
+        } catch (\Throwable $e) {
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            Logger::error('Falha ao criar produto', ['error' => $e->getMessage()]);
+            Session::flashInput($data);
+            Session::flash('error', 'Falha ao criar produto: ' . $e->getMessage());
+            Response::redirect(url('admin/produtos/novo'));
+        }
+
+        Session::flash('success', 'Produto criado.');
+        Response::redirect(url("admin/produtos/{$id}/editar"));
+    }
+
+    public function update(Request $request): never
+    {
+        $id = (int) $request->param('id');
+        $product = $this->products->findById($id);
+        if ($product === null) Response::abort(404);
+
+        $data = $this->extractData($request);
+        $v = $this->validate($data, isNew: false);
+        if ($v->fails()) {
+            Session::flash('error', $v->firstError() ?? 'Verifique os dados.');
+            Response::redirect(url("admin/produtos/{$id}/editar"));
+        }
+        if ($data['sku'] !== $product['sku'] && $this->skuExists($data['sku'])) {
+            Session::flash('error', 'SKU já existe em outro produto.');
+            Response::redirect(url("admin/produtos/{$id}/editar"));
+        }
+        if ($data['slug'] !== $product['slug'] && $this->slugExists($data['slug'], $id)) {
+            $data['slug'] .= '-' . bin2hex(random_bytes(2));
+        }
+
+        try {
+            $this->pdo->beginTransaction();
+            $this->updateProduct($id, $data);
+            $this->syncCategories($id, $data['categories']);
+            $this->handleUploadedImages($id, $request, $data['name']);
+            $this->pdo->commit();
+        } catch (\Throwable $e) {
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            Logger::error('Falha ao atualizar produto', ['id' => $id, 'error' => $e->getMessage()]);
+            Session::flash('error', 'Falha ao atualizar: ' . $e->getMessage());
+            Response::redirect(url("admin/produtos/{$id}/editar"));
+        }
+
+        Session::flash('success', 'Produto atualizado.');
+        Response::redirect(url("admin/produtos/{$id}/editar"));
+    }
+
+    public function destroy(Request $request): never
+    {
+        $id = (int) $request->param('id');
+        $stmt = $this->pdo->prepare("UPDATE products SET deleted_at = NOW(), is_active = 0 WHERE id = ?");
+        $stmt->execute([$id]);
+        Session::flash('success', 'Produto removido.');
+        Response::redirect(url('admin/produtos'));
+    }
+
+    /* ------------------------- Imagens ------------------------- */
+
+    public function setMainImage(Request $request): never
+    {
+        $productId = (int) $request->param('id');
+        $imageId   = (int) $request->post('image_id', 0);
+        if ($imageId > 0) {
+            $this->pdo->beginTransaction();
+            $this->pdo->prepare("UPDATE product_images SET is_main = 0 WHERE product_id = ?")
+                ->execute([$productId]);
+            $this->pdo->prepare("UPDATE product_images SET is_main = 1 WHERE id = ? AND product_id = ?")
+                ->execute([$imageId, $productId]);
+            // Atualiza hero_image_path
+            $stmt = $this->pdo->prepare("SELECT file_path FROM product_images WHERE id = ?");
+            $stmt->execute([$imageId]);
+            $file = $stmt->fetchColumn();
+            if ($file) {
+                $this->pdo->prepare("UPDATE products SET hero_image_path = ? WHERE id = ?")
+                    ->execute([$file, $productId]);
+            }
+            $this->pdo->commit();
+            Session::flash('success', 'Imagem principal atualizada.');
+        }
+        Response::redirect(url("admin/produtos/{$productId}/editar"));
+    }
+
+    public function deleteImage(Request $request): never
+    {
+        $productId = (int) $request->param('id');
+        $imageId   = (int) $request->post('image_id', 0);
+        if ($imageId > 0) {
+            $stmt = $this->pdo->prepare("SELECT file_path, is_main FROM product_images WHERE id = ? AND product_id = ?");
+            $stmt->execute([$imageId, $productId]);
+            $row = $stmt->fetch();
+            if ($row) {
+                $this->uploads->delete('products/' . $row['file_path']);
+                $this->pdo->prepare("DELETE FROM product_images WHERE id = ?")->execute([$imageId]);
+                if ($row['is_main']) {
+                    // Promove primeira restante a main
+                    $this->pdo->prepare(
+                        "UPDATE product_images SET is_main = 1
+                          WHERE product_id = ?
+                       ORDER BY sort_order ASC, id ASC LIMIT 1"
+                    )->execute([$productId]);
+                    $main = $this->pdo->prepare("SELECT file_path FROM product_images WHERE product_id = ? AND is_main = 1");
+                    $main->execute([$productId]);
+                    $newMain = $main->fetchColumn();
+                    $this->pdo->prepare("UPDATE products SET hero_image_path = ? WHERE id = ?")
+                        ->execute([$newMain ?: null, $productId]);
+                }
+                Session::flash('success', 'Imagem removida.');
+            }
+        }
+        Response::redirect(url("admin/produtos/{$productId}/editar"));
+    }
+
+    /* ------------------------- Helpers ------------------------- */
+
+    private function emptyProduct(): array
+    {
+        return [
+            'id' => null,
+            'sku' => '',
+            'name' => '',
+            'subtitle' => '',
+            'slug' => '',
+            'short_description' => '',
+            'description' => '',
+            'specifications' => null,
+            'price' => 0,
+            'cost' => null,
+            'stock_quantity' => null,
+            'weight_kg' => null,
+            'width_cm' => null,
+            'height_cm' => null,
+            'length_cm' => null,
+            'is_active' => 1,
+            'is_featured' => 0,
+            'meta_title' => '',
+            'meta_description' => '',
+            'hero_image_path' => null,
+        ];
+    }
+
+    private function extractData(Request $request): array
+    {
+        $name = trim((string) $request->post('name', ''));
+        $slug = trim((string) $request->post('slug', ''));
+        if ($slug === '') $slug = slugify($name);
+
+        $specsRaw = trim((string) $request->post('specifications_json', ''));
+        $specifications = null;
+        if ($specsRaw !== '') {
+            $decoded = json_decode($specsRaw, true);
+            if (is_array($decoded)) $specifications = $decoded;
+        }
+
+        return [
+            'sku'               => trim((string) $request->post('sku', '')),
+            'name'              => $name,
+            'subtitle'          => trim((string) $request->post('subtitle', '')),
+            'slug'              => $slug,
+            'short_description' => trim((string) $request->post('short_description', '')),
+            'description'       => trim((string) $request->post('description', '')),
+            'specifications'    => $specifications,
+            'price'             => (float) str_replace(',', '.', (string) $request->post('price', '0')),
+            'cost'              => $request->post('cost') !== null && $request->post('cost') !== ''
+                                    ? (float) str_replace(',', '.', (string) $request->post('cost')) : null,
+            'stock_quantity'    => $request->post('stock_quantity') !== '' ? (int) $request->post('stock_quantity') : null,
+            'weight_kg'         => $request->post('weight_kg') !== '' ? (float) str_replace(',', '.', (string) $request->post('weight_kg')) : null,
+            'width_cm'          => $request->post('width_cm') !== '' ? (float) str_replace(',', '.', (string) $request->post('width_cm')) : null,
+            'height_cm'         => $request->post('height_cm') !== '' ? (float) str_replace(',', '.', (string) $request->post('height_cm')) : null,
+            'length_cm'         => $request->post('length_cm') !== '' ? (float) str_replace(',', '.', (string) $request->post('length_cm')) : null,
+            'is_active'         => $request->post('is_active') ? 1 : 0,
+            'is_featured'       => $request->post('is_featured') ? 1 : 0,
+            'meta_title'        => trim((string) $request->post('meta_title', '')),
+            'meta_description'  => trim((string) $request->post('meta_description', '')),
+            'categories'        => array_map('intval', (array) $request->post('categories', [])),
+        ];
+    }
+
+    private function validate(array $data, bool $isNew): Validator
+    {
+        return new Validator($data, [
+            'sku'   => 'required|max:80',
+            'name'  => 'required|max:200',
+            'slug'  => 'required|max:220',
+            'price' => 'numeric',
+        ]);
+    }
+
+    private function skuExists(string $sku, ?int $excludeId = null): bool
+    {
+        $sql = "SELECT 1 FROM products WHERE sku = :sku" . ($excludeId !== null ? " AND id <> :id" : "") . " LIMIT 1";
+        $stmt = $this->pdo->prepare($sql);
+        $params = ['sku' => $sku];
+        if ($excludeId !== null) $params['id'] = $excludeId;
+        $stmt->execute($params);
+        return (bool) $stmt->fetchColumn();
+    }
+
+    private function slugExists(string $slug, ?int $excludeId = null): bool
+    {
+        $sql = "SELECT 1 FROM products WHERE slug = :slug" . ($excludeId !== null ? " AND id <> :id" : "") . " LIMIT 1";
+        $stmt = $this->pdo->prepare($sql);
+        $params = ['slug' => $slug];
+        if ($excludeId !== null) $params['id'] = $excludeId;
+        $stmt->execute($params);
+        return (bool) $stmt->fetchColumn();
+    }
+
+    private function insertProduct(array $d): int
+    {
+        $stmt = $this->pdo->prepare(
+            "INSERT INTO products
+                (sku, name, subtitle, slug, short_description, description, specifications,
+                 price, cost, stock_quantity, weight_kg, width_cm, height_cm, length_cm,
+                 is_active, is_featured, meta_title, meta_description)
+             VALUES
+                (:sku, :name, :sub, :slug, :short, :desc, :specs,
+                 :price, :cost, :stock, :wkg, :w, :h, :l,
+                 :active, :featured, :mt, :md)"
+        );
+        $stmt->execute([
+            'sku' => $d['sku'], 'name' => $d['name'], 'sub' => $d['subtitle'] ?: null,
+            'slug' => $d['slug'], 'short' => $d['short_description'] ?: null,
+            'desc' => $d['description'] ?: null,
+            'specs' => $d['specifications'] !== null ? json_encode($d['specifications'], JSON_UNESCAPED_UNICODE) : null,
+            'price' => $d['price'], 'cost' => $d['cost'], 'stock' => $d['stock_quantity'],
+            'wkg' => $d['weight_kg'], 'w' => $d['width_cm'], 'h' => $d['height_cm'], 'l' => $d['length_cm'],
+            'active' => $d['is_active'], 'featured' => $d['is_featured'],
+            'mt' => $d['meta_title'] ?: null, 'md' => $d['meta_description'] ?: null,
+        ]);
+        return (int) $this->pdo->lastInsertId();
+    }
+
+    private function updateProduct(int $id, array $d): void
+    {
+        $stmt = $this->pdo->prepare(
+            "UPDATE products SET
+                sku = :sku, name = :name, subtitle = :sub, slug = :slug,
+                short_description = :short, description = :desc, specifications = :specs,
+                price = :price, cost = :cost, stock_quantity = :stock,
+                weight_kg = :wkg, width_cm = :w, height_cm = :h, length_cm = :l,
+                is_active = :active, is_featured = :featured,
+                meta_title = :mt, meta_description = :md
+              WHERE id = :id"
+        );
+        $stmt->execute([
+            'id' => $id,
+            'sku' => $d['sku'], 'name' => $d['name'], 'sub' => $d['subtitle'] ?: null,
+            'slug' => $d['slug'], 'short' => $d['short_description'] ?: null,
+            'desc' => $d['description'] ?: null,
+            'specs' => $d['specifications'] !== null ? json_encode($d['specifications'], JSON_UNESCAPED_UNICODE) : null,
+            'price' => $d['price'], 'cost' => $d['cost'], 'stock' => $d['stock_quantity'],
+            'wkg' => $d['weight_kg'], 'w' => $d['width_cm'], 'h' => $d['height_cm'], 'l' => $d['length_cm'],
+            'active' => $d['is_active'], 'featured' => $d['is_featured'],
+            'mt' => $d['meta_title'] ?: null, 'md' => $d['meta_description'] ?: null,
+        ]);
+    }
+
+    private function syncCategories(int $productId, array $categoryIds): void
+    {
+        $this->pdo->prepare("DELETE FROM product_categories WHERE product_id = ?")->execute([$productId]);
+        if ($categoryIds === []) return;
+        $stmt = $this->pdo->prepare("INSERT IGNORE INTO product_categories (product_id, category_id) VALUES (?, ?)");
+        foreach ($categoryIds as $cid) {
+            $stmt->execute([$productId, $cid]);
+        }
+    }
+
+    private function handleUploadedImages(int $productId, Request $request, string $productName): void
+    {
+        $files = $_FILES['images'] ?? null;
+        if (!$files || empty($files['name']) || !is_array($files['name'])) {
+            return;
+        }
+        $countExisting = (int) $this->pdo
+            ->query("SELECT COUNT(*) FROM product_images WHERE product_id = {$productId}")
+            ->fetchColumn();
+
+        for ($i = 0; $i < count($files['name']); $i++) {
+            if (($files['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) continue;
+            $file = [
+                'name'     => $files['name'][$i],
+                'tmp_name' => $files['tmp_name'][$i],
+                'error'    => $files['error'][$i],
+                'size'     => $files['size'][$i],
+                'type'     => $files['type'][$i] ?? '',
+            ];
+            try {
+                $filename = $this->uploads->store($file, 'products', $productName);
+                $isMain = $countExisting === 0 ? 1 : 0;
+                $this->pdo->prepare(
+                    "INSERT INTO product_images (product_id, file_path, alt_text, is_main, sort_order)
+                     VALUES (?, ?, ?, ?, ?)"
+                )->execute([$productId, $filename, $productName, $isMain, $countExisting + $i]);
+                if ($isMain) {
+                    $this->pdo->prepare("UPDATE products SET hero_image_path = ? WHERE id = ?")
+                        ->execute([$filename, $productId]);
+                }
+                $countExisting++;
+            } catch (\Throwable $e) {
+                Logger::warning('Falha em upload', ['err' => $e->getMessage()]);
+                Session::flash('error', 'Algumas imagens não foram salvas: ' . $e->getMessage());
+            }
+        }
+    }
+}
