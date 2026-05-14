@@ -12,8 +12,8 @@ $pageSubtitle = $initialCategory && !empty($initialCategory['description'])
 $initialSelected = $selectedCats ?? [];
 ?>
 
-<!-- Hero full-width neutro (cinza claro com leve gradient) -->
-<section class="relative overflow-hidden border-b border-brand-line bg-gray-50">
+<!-- Hero full-width neutro (apenas cinza, sem bordas) -->
+<section class="relative overflow-hidden bg-gray-50">
     <div class="relative max-w-content mx-auto px-6 lg:px-10 py-10 lg:py-14 text-center">
         <?php if ($initialCategory): ?>
             <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/80 backdrop-blur-sm border border-brand-line text-[11px] font-semibold uppercase tracking-widest text-brand-blue mb-4">
