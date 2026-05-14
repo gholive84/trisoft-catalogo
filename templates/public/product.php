@@ -75,17 +75,26 @@ $primaryCategory = $categories[0] ?? null;
     <?php if (!empty($specs)): ?>
         <div class="text-center mb-6">
             <div class="text-xs uppercase tracking-widest text-brand-muted font-medium">Sugestões de Modulação</div>
-            <div class="flex items-center justify-center gap-4 mt-5 opacity-60">
-                <?php for ($i = 0; $i < min(5, count($specs)); $i++): ?>
-                    <svg class="w-12 h-9 text-brand-ink" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 64 48">
-                        <g transform="translate(<?= 4 + $i ?>, <?= 8 + $i*2 ?>)">
-                            <?php for ($j = 0; $j < 6; $j++): ?>
-                                <line x1="<?= $j*8 ?>" y1="<?= 8 - $j*0.5 ?>" x2="<?= 50 - $j ?>" y2="<?= 12 - $j*0.3 ?>"/>
-                            <?php endfor; ?>
-                        </g>
-                    </svg>
-                <?php endfor; ?>
-            </div>
+            <?php if (!empty($product['modulation_image_path'])): ?>
+                <div class="mt-5">
+                    <img src="<?= e(upload_url('products/' . $product['modulation_image_path'])) ?>"
+                         alt="Sugestões de modulação"
+                         class="max-w-full mx-auto"
+                         style="max-height: 200px;">
+                </div>
+            <?php else: ?>
+                <div class="flex items-center justify-center gap-4 mt-5 opacity-60">
+                    <?php for ($i = 0; $i < min(5, count($specs)); $i++): ?>
+                        <svg class="w-12 h-9 text-brand-ink" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 64 48">
+                            <g transform="translate(<?= 4 + $i ?>, <?= 8 + $i*2 ?>)">
+                                <?php for ($j = 0; $j < 6; $j++): ?>
+                                    <line x1="<?= $j*8 ?>" y1="<?= 8 - $j*0.5 ?>" x2="<?= 50 - $j ?>" y2="<?= 12 - $j*0.3 ?>"/>
+                                <?php endfor; ?>
+                            </g>
+                        </svg>
+                    <?php endfor; ?>
+                </div>
+            <?php endif; ?>
         </div>
 
         <div class="overflow-x-auto mb-10 border border-brand-line rounded-2xl">

@@ -124,17 +124,97 @@ if (!empty($product['specifications'])) {
             </div>
         </div>
 
-        <!-- Tabela de variações (specifications JSON) -->
-        <div class="bg-white border border-brand-line rounded-2xl p-6 space-y-3">
+        <!-- Tabela de variações (form dinâmico) -->
+        <?php
+        // Prepara $specsArray pra o Alpine. Se vier do banco, normaliza para array de objetos.
+        $specsArray = !empty($product['specifications'])
+            ? (is_array($product['specifications']) ? $product['specifications'] : json_decode((string) $product['specifications'], true))
+            : [];
+        if (!is_array($specsArray)) $specsArray = [];
+        $specsJsonInline = htmlspecialchars(json_encode(array_values($specsArray), JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
+        ?>
+        <div class="bg-white border border-brand-line rounded-2xl p-6 space-y-3"
+             x-data='{
+                rows: <?= $specsJsonInline ?: "[]" ?>,
+                addRow() { this.rows.push({code:"", thickness:"", a:"", b:"", pieces_per_box:"", coverage_area:"", pet_bottles:""}); },
+                removeRow(i) { this.rows.splice(i, 1); },
+                duplicateRow(i) {
+                    const c = JSON.parse(JSON.stringify(this.rows[i]));
+                    this.rows.splice(i + 1, 0, c);
+                }
+             }'>
             <div class="flex items-start justify-between gap-4">
                 <div>
                     <h2 class="font-display font-semibold text-brand-ink">Tabela de variações</h2>
-                    <p class="text-xs text-brand-muted mt-1">JSON array de objetos com code/thickness/A/B/etc. Renderizado como tabela na página do produto.</p>
+                    <p class="text-xs text-brand-muted mt-1">Variações de tamanho/modulação. Cada linha é um SKU (código) com suas dimensões e quantidades.</p>
                 </div>
+                <button type="button" @click="addRow()"
+                        class="bg-brand-ink text-white px-4 py-2 rounded-full text-xs font-medium hover:bg-black transition inline-flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                    Nova variação
+                </button>
             </div>
-            <textarea name="specifications_json" rows="10"
-                      placeholder='[{"code":"BC-STR-50-0001","thickness":50,"a":200,"b":1200,"pieces_per_box":14,"coverage_area":"3,96 m²","pet_bottles":27}, ...]'
-                      class="w-full border border-brand-line rounded-lg px-3 py-2 font-mono text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition"><?= e($specsJson) ?></textarea>
+
+            <div class="space-y-2">
+                <!-- Header (visual) -->
+                <div class="hidden md:grid grid-cols-[1.6fr_0.8fr_0.7fr_0.7fr_0.7fr_1fr_0.7fr_0.3fr] gap-2 px-2 text-[10px] uppercase tracking-widest text-brand-muted font-medium">
+                    <div>Code (SKU)</div>
+                    <div>Thickness</div>
+                    <div>"A" (mm)</div>
+                    <div>"B" (mm)</div>
+                    <div>Pç/cx</div>
+                    <div>Cobertura</div>
+                    <div>PET</div>
+                    <div></div>
+                </div>
+
+                <template x-for="(row, i) in rows" :key="i">
+                    <div class="grid grid-cols-1 md:grid-cols-[1.6fr_0.8fr_0.7fr_0.7fr_0.7fr_1fr_0.7fr_0.3fr] gap-2 items-center bg-gray-50 rounded-xl p-2">
+                        <input type="text" :name="`specifications[${i}][code]`" x-model="row.code"
+                               placeholder="BC-STR-50-0001"
+                               class="border border-brand-line rounded-lg px-2.5 py-1.5 font-mono text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
+                        <input type="text" :name="`specifications[${i}][thickness]`" x-model="row.thickness"
+                               placeholder="50"
+                               class="border border-brand-line rounded-lg px-2.5 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
+                        <input type="text" :name="`specifications[${i}][a]`" x-model="row.a"
+                               placeholder="200"
+                               class="border border-brand-line rounded-lg px-2.5 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
+                        <input type="text" :name="`specifications[${i}][b]`" x-model="row.b"
+                               placeholder="1200"
+                               class="border border-brand-line rounded-lg px-2.5 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
+                        <input type="text" :name="`specifications[${i}][pieces_per_box]`" x-model="row.pieces_per_box"
+                               placeholder="14"
+                               class="border border-brand-line rounded-lg px-2.5 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
+                        <input type="text" :name="`specifications[${i}][coverage_area]`" x-model="row.coverage_area"
+                               placeholder="3,96 m²"
+                               class="border border-brand-line rounded-lg px-2.5 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
+                        <input type="text" :name="`specifications[${i}][pet_bottles]`" x-model="row.pet_bottles"
+                               placeholder="27"
+                               class="border border-brand-line rounded-lg px-2.5 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
+                        <div class="flex items-center gap-1 justify-end">
+                            <button type="button" @click="duplicateRow(i)" title="Duplicar"
+                                    class="w-8 h-8 rounded-lg text-brand-muted hover:text-brand-blue hover:bg-white transition flex items-center justify-center">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                            </button>
+                            <button type="button" @click="removeRow(i)" title="Remover"
+                                    class="w-8 h-8 rounded-lg text-brand-muted hover:text-rose-600 hover:bg-rose-50 transition flex items-center justify-center">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a2 2 0 012-2h2a2 2 0 012 2v3"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+
+                <template x-if="rows.length === 0">
+                    <div class="text-center py-8 text-brand-muted text-sm">
+                        Nenhuma variação. <button type="button" @click="addRow()" class="text-brand-blue hover:underline font-medium">+ Adicionar primeira</button>
+                    </div>
+                </template>
+            </div>
+
+            <div class="flex items-center justify-between pt-3 border-t border-brand-line">
+                <div class="text-xs text-brand-muted" x-text="`${rows.length} variação(ões)`"></div>
+                <button type="button" @click="addRow()" class="text-xs text-brand-blue hover:underline font-medium">+ Adicionar variação</button>
+            </div>
         </div>
 
         <!-- Imagens -->

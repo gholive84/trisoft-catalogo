@@ -292,11 +292,34 @@ final class ProductController
         $slug = trim((string) $request->post('slug', ''));
         if ($slug === '') $slug = slugify($name);
 
-        $specsRaw = trim((string) $request->post('specifications_json', ''));
+        // Variações: novo formato (form dinâmico) — specifications[N][campo] array de arrays.
+        // Fallback: specifications_json (textarea) para retrocompat.
         $specifications = null;
-        if ($specsRaw !== '') {
-            $decoded = json_decode($specsRaw, true);
-            if (is_array($decoded)) $specifications = $decoded;
+        $specsArray = (array) $request->post('specifications', []);
+        if ($specsArray !== []) {
+            $filtered = [];
+            foreach ($specsArray as $row) {
+                if (!is_array($row)) continue;
+                // descarta linhas totalmente vazias
+                $nonEmpty = array_filter(array_map(fn ($v) => is_string($v) ? trim($v) : (string) $v, $row));
+                if ($nonEmpty === []) continue;
+                $filtered[] = [
+                    'code'           => trim((string) ($row['code'] ?? '')),
+                    'thickness'      => is_numeric($row['thickness'] ?? null) ? (int) $row['thickness'] : trim((string) ($row['thickness'] ?? '')),
+                    'a'              => is_numeric($row['a'] ?? null) ? (int) $row['a'] : trim((string) ($row['a'] ?? '')),
+                    'b'              => is_numeric($row['b'] ?? null) ? (int) $row['b'] : trim((string) ($row['b'] ?? '')),
+                    'pieces_per_box' => is_numeric($row['pieces_per_box'] ?? null) ? (int) $row['pieces_per_box'] : trim((string) ($row['pieces_per_box'] ?? '')),
+                    'coverage_area'  => trim((string) ($row['coverage_area'] ?? '')),
+                    'pet_bottles'    => is_numeric($row['pet_bottles'] ?? null) ? (int) $row['pet_bottles'] : trim((string) ($row['pet_bottles'] ?? '')),
+                ];
+            }
+            if ($filtered !== []) $specifications = $filtered;
+        } else {
+            $specsRaw = trim((string) $request->post('specifications_json', ''));
+            if ($specsRaw !== '') {
+                $decoded = json_decode($specsRaw, true);
+                if (is_array($decoded)) $specifications = $decoded;
+            }
         }
 
         return [

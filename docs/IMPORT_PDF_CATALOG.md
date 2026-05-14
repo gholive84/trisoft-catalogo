@@ -167,14 +167,45 @@ $SSH -i $KEY -p 18765 u2550-7wftgcpgoimd@gtxm1030.siteground.biz \
      php scripts/extract_pdf_images.php /tmp/paineis.pdf'
 ```
 
-(O script `extract_pdf_images.php` é genérico — não precisa duplicar. Ele lê
-qualquer entrada `_baffles_hero_page_*` em settings, mas o nome da chave pode ser
-generalizado se necessário. **TODO:** renomear para `_hero_page_*` quando criar
-o segundo catálogo.)
+O script `extract_pdf_images.php` é genérico — não precisa duplicar. Lê entradas
+`_baffles_hero_page_*` em settings (TODO: renomear para `_hero_page_*` quando
+criar o segundo catálogo).
 
-Cada imagem fica em `public/uploads/products/<slug>.jpg` a 1920×1080 q85
-(~200–400 KB cada). O script é **idempotente** — pula arquivos que já existem.
-Use `--force` para re-renderizar.
+**Gera DUAS imagens por produto:**
+
+1. **Hero** — `<slug>.jpg` em 1920×1080, JPG q85 (~200–400 KB), renderizado da
+   página ímpar do PDF (página com foto grande do produto em ambiente).
+   Salvo em `products.hero_image_path` + `product_images` (is_main=1).
+
+2. **Sugestões de Modulação** — `<slug>-modulation.png`, faixa horizontal
+   recortada da página de specs (hero_page + 1). Mostra os ícones wireframe das
+   variações de modulação que aparecem no PDF acima da tabela. Salvo em
+   `products.modulation_image_path`. Usado pelo template `public/product.php`
+   na seção "Sugestões de Modulação".
+
+**Flags úteis:**
+
+| Flag | Descrição |
+|------|-----------|
+| `--density=N` | DPI de render (default 250). Maior = imagem maior + mais qualidade. |
+| `--quality=N` | JPEG quality (default 85). |
+| `--limit=N` | Processa só N produtos (debug). |
+| `--force` | Re-renderiza mesmo que o arquivo já exista. |
+| `--skip-hero` | Pula heroes (só gera modulações). |
+| `--skip-modulation` | Pula modulações (só gera heroes). |
+| `--mod-crop="WxH+X+Y"` | Define a região de crop da modulação em % da página. Default: `90%x12%+5%+28%` (faixa horizontal central na altura de "Modulation suggestions" do layout Trisoft). |
+
+**Idempotência:** o script pula arquivos que já existem. Use `--force` para
+re-renderizar tudo (útil se mudar o crop ou o subtitle/slug do produto).
+
+**Ajuste do crop de modulação:** se o novo PDF tem layout diferente, ajuste o
+`--mod-crop`. Para descobrir o valor certo:
+```bash
+# Renderiza só uma página completa pra inspecionar visualmente
+magick /tmp/paineis.pdf[7] -density 200 /tmp/page8.png
+# Abre /tmp/page8.png, mede as coordenadas da faixa de modulação (% da página)
+# e passa --mod-crop=X%xY%+Z%+W%
+```
 
 ### 7. Validar via navegador
 
@@ -194,8 +225,9 @@ Flush Cache.
 | Arquivo | Função |
 |---------|--------|
 | [`scripts/import_baffles_pdf.php`](../scripts/import_baffles_pdf.php) | Parser do texto extraído + cria produtos + tabela `specifications` JSON. Template para outros catálogos. |
-| [`scripts/extract_pdf_images.php`](../scripts/extract_pdf_images.php) | Renderiza páginas de hero como JPG usando `magick` (PDF → JPG 1920×1080). |
-| [`database/migrations/015_add_specifications_to_products.sql`](../database/migrations/015_add_specifications_to_products.sql) | Adiciona campos `specifications JSON`, `subtitle`, `hero_image_path` em `products`. |
+| [`scripts/extract_pdf_images.php`](../scripts/extract_pdf_images.php) | Renderiza heroes (JPG 1920×1080) + modulações (PNG crop da página de specs) usando `magick`. |
+| [`database/migrations/015_add_specifications_to_products.sql`](../database/migrations/015_add_specifications_to_products.sql) | Adiciona `specifications JSON`, `subtitle`, `hero_image_path` em `products`. |
+| [`database/migrations/016_add_modulation_image_to_products.sql`](../database/migrations/016_add_modulation_image_to_products.sql) | Adiciona `modulation_image_path` em `products` para a faixa de modulação extraída do PDF. |
 
 ---
 
