@@ -43,11 +43,11 @@ if (auth()) {
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 11V7a3 3 0 016 0v4m-9 8h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/>
                 </svg>
-                <?php if ($cartBadge > 0): ?>
-                    <span class="absolute -top-1.5 -right-1.5 bg-brand-blue text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
-                        <?= e((string) $cartBadge) ?>
-                    </span>
-                <?php endif; ?>
+                <span data-cart-badge
+                      class="absolute -top-1.5 -right-1.5 bg-brand-blue text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center"
+                      style="<?= $cartBadge > 0 ? '' : 'display: none;' ?>">
+                    <?= e((string) max(0, $cartBadge)) ?>
+                </span>
             </button>
         </div>
     </div>

@@ -1,12 +1,17 @@
 <?php
 /**
- * <head> compartilhado entre layouts (public, admin, customer).
+ * <head> compartilhado entre layouts.
+ *
+ * Importante: Tailwind CDN deve carregar ANTES da config (a config registra-se
+ * no objeto tailwind global criado pelo CDN). Inverter a ordem perde o config.
  */
 ?>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?= e($title ?? 'Catálogo Trisoft') ?> — Trisoft</title>
 <meta name="description" content="<?= e($metaDescription ?? 'Catálogo Trisoft. Revestimentos acústicos com tratamento de alta performance para arquitetura e design.') ?>">
+<meta name="csrf-token" content="<?= e(csrf_token()) ?>">
+<meta name="base-url" content="<?= e(\App\Core\Config::baseUrl()) ?>">
 
 <link rel="icon" type="image/png" href="<?= e(asset('images/logo-mark.png')) ?>">
 <link rel="apple-touch-icon" href="<?= e(asset('images/logo-mark.png')) ?>">
@@ -15,9 +20,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
+<script src="https://cdn.tailwindcss.com"></script>
 <script>
     // Paleta Trisoft (extraída do site institucional).
-    window.tailwind = window.tailwind || {};
     tailwind.config = {
         theme: {
             extend: {
@@ -30,6 +35,7 @@
                         'blue-dark': '#1E4DCC',
                         'blue-soft': '#0071A2',
                         green:       '#8BC750',
+                        'green-dark': '#6DAE3F',
                         teal:        '#00A28E',
                         navy:        '#1C244B',
                         ink:         '#111111',
@@ -43,11 +49,13 @@
                     wider:    '0.06em',
                     widest:   '0.18em',
                 },
+                maxWidth: {
+                    'content': '1280px',
+                },
             },
         },
     };
 </script>
-<script src="https://cdn.tailwindcss.com"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
 <style>

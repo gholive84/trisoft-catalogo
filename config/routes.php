@@ -20,6 +20,7 @@ use App\Controllers\Admin\UserController as AdminUserController;
 use App\Controllers\Customer\DashboardController as CustomerDashboard;
 use App\Controllers\Customer\OrderController as CustomerOrderController;
 use App\Controllers\Public\AuthController;
+use App\Controllers\Public\CartApiController;
 use App\Controllers\Public\CartController;
 use App\Controllers\Public\CatalogController;
 use App\Controllers\Public\HomeController;
@@ -44,6 +45,12 @@ $router->post('/carrinho/atualizar',           [CartController::class, 'update']
 $router->post('/carrinho/remover',             [CartController::class, 'remove'],       [new CsrfMiddleware()]);
 $router->post('/carrinho/limpar',              [CartController::class, 'clear'],        [new CsrfMiddleware()]);
 $router->post('/carrinho/solicitar-orcamento', [CartController::class, 'requestQuote'], [new CsrfMiddleware()]);
+
+// AJAX API do carrinho (JSON)
+$router->post('/api/carrinho/adicionar', [CartApiController::class, 'add']);
+$router->post('/api/carrinho/atualizar', [CartApiController::class, 'update']);
+$router->post('/api/carrinho/remover',   [CartApiController::class, 'remove']);
+$router->get('/api/carrinho',            [CartApiController::class, 'state']);
 
 $router->get('/login',    [AuthController::class, 'showLogin']);
 $router->post('/login',   [AuthController::class, 'login'],    [new CsrfMiddleware()]);
