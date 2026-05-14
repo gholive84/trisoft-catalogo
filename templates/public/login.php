@@ -7,14 +7,14 @@
 <body class="bg-brand-ink text-brand-ink min-h-screen relative overflow-hidden"
       x-data="{ cartOpen: false }">
 
-<!-- BG image (foto clean do catálogo) -->
+<!-- BG image (foto premium do catálogo) -->
 <div class="absolute inset-0 z-0">
-    <img src="<?= e(upload_url('products/baffle-classic-wave-solid.jpg')) ?>"
+    <img src="<?= e(upload_url('products/baffle-form-wave-printed.jpg')) ?>"
          alt=""
          class="w-full h-full object-cover"
          onerror="this.style.display='none'">
-    <div class="absolute inset-0 bg-gradient-to-br from-white/85 via-white/55 to-white/75"></div>
-    <div class="absolute inset-0 bg-gradient-to-t from-brand-cream/40 via-transparent to-transparent"></div>
+    <!-- Overlay sutil para garantir contraste sem escurecer demais -->
+    <div class="absolute inset-0 bg-gradient-to-r from-white/95 via-white/70 to-white/30"></div>
 </div>
 
 <!-- Header minimal -->

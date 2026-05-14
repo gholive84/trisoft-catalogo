@@ -26,43 +26,69 @@ $initialSelected = $selectedCats ?? [];
          ], JSON_UNESCAPED_UNICODE)) ?>)'
          x-init="init()">
 
-    <!-- Sidebar de categorias (checkboxes) -->
-    <aside class="lg:sticky lg:top-8 h-fit">
-        <div class="text-xs uppercase tracking-widest text-brand-muted font-medium mb-3 px-1">Categorias</div>
-
-        <!-- Limpar -->
-        <div x-show="selectedCats.length > 0 || query.length > 0" x-cloak class="mb-3">
-            <button type="button" @click="clearAll()"
-                    class="text-xs text-brand-blue hover:underline">
-                ✕ Limpar filtros
-            </button>
+    <!-- Sidebar de filtros -->
+    <aside class="lg:sticky lg:top-8 h-fit space-y-6">
+        <!-- Campo de busca -->
+        <div>
+            <label class="block text-xs uppercase tracking-widest text-brand-muted font-medium mb-2 px-1">Buscar</label>
+            <div class="relative">
+                <input type="search"
+                       x-model="query"
+                       @input.debounce.350ms="refresh()"
+                       @keydown.enter.prevent="refresh()"
+                       placeholder="Nome, SKU..."
+                       class="w-full bg-gray-100 border border-transparent rounded-full pl-10 pr-9 py-2.5 text-sm placeholder:text-gray-400 focus:bg-white focus:border-brand-line focus:ring-2 focus:ring-gray-200 transition">
+                <svg class="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.817-4.816A6 6 0 012 8z" clip-rule="evenodd"/>
+                </svg>
+                <button type="button"
+                        x-show="query.length > 0" x-cloak
+                        @click="query=''; refresh()"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand-ink"
+                        aria-label="Limpar busca">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
         </div>
 
-        <nav class="flex flex-col gap-0.5 text-sm">
-            <?php
-            $renderCategory = function (array $node, int $depth = 0) use (&$renderCategory) {
-                $id = (int) $node['id'];
-                $hasChildren = !empty($node['children']);
-            ?>
-                <div class="text-sm">
-                    <label class="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-gray-50 cursor-pointer"
-                           style="padding-left: <?= 8 + ($depth * 16) ?>px">
-                        <input type="checkbox" value="<?= $id ?>"
-                               @change="toggleCat(<?= $id ?>)"
-                               :checked="selectedCats.includes(<?= $id ?>)"
-                               class="rounded border-gray-300 text-brand-ink focus:ring-brand-ink">
-                        <span class="text-brand-ink"><?= e($node['name']) ?></span>
-                    </label>
-                    <?php if ($hasChildren): ?>
-                        <div class="flex flex-col gap-0.5">
-                            <?php foreach ($node['children'] as $child) $renderCategory($child, $depth + 1); ?>
-                        </div>
-                    <?php endif; ?>
-                </div>
-            <?php };
-            foreach ($tree as $n) $renderCategory($n, 0);
-            ?>
-        </nav>
+        <!-- Categorias -->
+        <div>
+            <div class="flex items-center justify-between mb-3 px-1">
+                <div class="text-xs uppercase tracking-widest text-brand-muted font-medium">Categorias</div>
+                <button type="button"
+                        x-show="selectedCats.length > 0 || query.length > 0" x-cloak
+                        @click="clearAll()"
+                        class="text-[11px] text-brand-blue hover:underline font-medium">
+                    Limpar
+                </button>
+            </div>
+
+            <nav class="flex flex-col gap-0.5 text-sm">
+                <?php
+                $renderCategory = function (array $node, int $depth = 0) use (&$renderCategory) {
+                    $id = (int) $node['id'];
+                    $hasChildren = !empty($node['children']);
+                ?>
+                    <div class="text-sm">
+                        <label class="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-gray-50 cursor-pointer"
+                               style="padding-left: <?= 8 + ($depth * 16) ?>px">
+                            <input type="checkbox" value="<?= $id ?>"
+                                   @change="toggleCat(<?= $id ?>)"
+                                   :checked="selectedCats.includes(<?= $id ?>)"
+                                   class="rounded border-gray-300 text-brand-ink focus:ring-brand-ink">
+                            <span class="text-brand-ink"><?= e($node['name']) ?></span>
+                        </label>
+                        <?php if ($hasChildren): ?>
+                            <div class="flex flex-col gap-0.5">
+                                <?php foreach ($node['children'] as $child) $renderCategory($child, $depth + 1); ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                <?php };
+                foreach ($tree as $n) $renderCategory($n, 0);
+                ?>
+            </nav>
+        </div>
     </aside>
 
     <!-- Grid -->
