@@ -137,9 +137,11 @@ final class CatalogController
             $params = array_merge($params, $catIds);
         }
         if ($query !== '') {
-            $where .= " AND (p.name LIKE ? OR p.sku LIKE ? OR p.subtitle LIKE ? OR p.description LIKE ?)";
-            $like = '%' . $query . '%';
-            $params = array_merge($params, [$like, $like, $like, $like]);
+            $searchPart = ProductRepository::buildSearchWhere($query, 'p');
+            if ($searchPart['where'] !== '') {
+                $where .= " AND " . $searchPart['where'];
+                $params = array_merge($params, $searchPart['params']);
+            }
         }
 
         $countSql = "SELECT COUNT(DISTINCT p.id) FROM products p {$joins} WHERE {$where}";

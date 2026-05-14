@@ -35,19 +35,22 @@ final class HomeController
         $perPage = 24;
         $offset  = ($page - 1) * $perPage;
 
-        $where  = "is_active = 1 AND deleted_at IS NULL";
+        $where  = "p.is_active = 1 AND p.deleted_at IS NULL";
         $params = [];
         if ($q !== '') {
-            $where .= " AND (name LIKE :q OR sku LIKE :q OR subtitle LIKE :q OR description LIKE :q)";
-            $params['q'] = '%' . $q . '%';
+            $searchPart = ProductRepository::buildSearchWhere($q, 'p');
+            if ($searchPart['where'] !== '') {
+                $where .= " AND " . $searchPart['where'];
+                $params = array_merge($params, $searchPart['params']);
+            }
         }
-        $countStmt = $this->pdo->prepare("SELECT COUNT(*) FROM products WHERE {$where}");
+        $countStmt = $this->pdo->prepare("SELECT COUNT(*) FROM products p WHERE {$where}");
         $countStmt->execute($params);
         $total = (int) $countStmt->fetchColumn();
 
-        $sql = "SELECT * FROM products
+        $sql = "SELECT p.* FROM products p
                  WHERE {$where}
-              ORDER BY is_featured DESC, name ASC
+              ORDER BY p.is_featured DESC, p.name ASC
                  LIMIT {$perPage} OFFSET {$offset}";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);

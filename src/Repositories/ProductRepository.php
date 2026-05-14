@@ -179,7 +179,49 @@ final class ProductRepository
     }
 
     /**
-     * Busca por nome, SKU ou descrição (LIKE).
+     * Monta a cláusula WHERE para busca multi-palavra.
+     *
+     * Cada token (palavra separada por espaço) precisa aparecer em PELO MENOS
+     * UM dos campos pesquisados (name, sku, subtitle, description). Entre
+     * tokens é AND — todas as palavras precisam existir, mas podem estar em
+     * campos ou posições diferentes.
+     *
+     * Ex.: "baffle classic" encontra um produto cujo `name` é "BAFFLE CLASSIC
+     * STRAIGHT" (ambas as palavras no name), mas também um cujo `name` é
+     * "BAFFLE FORM" + `description` "Classic ...".
+     *
+     * @return array{where: string, params: array<int, string>}
+     */
+    public static function buildSearchWhere(string $query, string $alias = 'p'): array
+    {
+        $query = trim($query);
+        if ($query === '') return ['where' => '', 'params' => []];
+
+        // Quebra em tokens (whitespace), descarta tokens com menos de 2 chars
+        $tokens = preg_split('/\s+/u', $query, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $tokens = array_values(array_filter($tokens, fn ($t) => mb_strlen($t) >= 2));
+        if ($tokens === []) {
+            // Token único de 1 char ainda pode ser válido para SKU
+            $tokens = preg_split('/\s+/u', $query, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        }
+        if ($tokens === []) return ['where' => '', 'params' => []];
+
+        $clauses = [];
+        $params  = [];
+        foreach ($tokens as $tok) {
+            $like = '%' . $tok . '%';
+            $clauses[] = "({$alias}.name LIKE ? OR {$alias}.sku LIKE ? OR {$alias}.subtitle LIKE ? OR {$alias}.description LIKE ?)";
+            array_push($params, $like, $like, $like, $like);
+        }
+
+        return [
+            'where'  => '(' . implode(' AND ', $clauses) . ')',
+            'params' => $params,
+        ];
+    }
+
+    /**
+     * Busca por nome, SKU ou descrição. Multi-palavra (AND entre tokens).
      * @return array{items: array<int, array>, total: int, page: int, perPage: int, lastPage: int}
      */
     public function search(string $query, int $page = 1, int $perPage = 12): array
@@ -187,21 +229,23 @@ final class ProductRepository
         $page    = max(1, $page);
         $perPage = max(1, min(48, $perPage));
         $offset  = ($page - 1) * $perPage;
-        $like    = '%' . trim($query) . '%';
 
-        $where = "is_active = 1 AND deleted_at IS NULL
-                  AND (name LIKE ? OR sku LIKE ? OR description LIKE ?)";
+        $base = "p.is_active = 1 AND p.deleted_at IS NULL";
+        $searchPart = self::buildSearchWhere($query, 'p');
+        $where = $searchPart['where'] !== ''
+            ? "{$base} AND {$searchPart['where']}"
+            : "{$base}";
 
-        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM products WHERE {$where}");
-        $stmt->execute([$like, $like, $like]);
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM products p WHERE {$where}");
+        $stmt->execute($searchPart['params']);
         $total = (int) $stmt->fetchColumn();
 
-        $sql = "SELECT * FROM products
+        $sql = "SELECT p.* FROM products p
                  WHERE {$where}
-              ORDER BY name ASC
+              ORDER BY p.name ASC
                  LIMIT {$perPage} OFFSET {$offset}";
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$like, $like, $like]);
+        $stmt->execute($searchPart['params']);
         $items = $this->withMainImage($stmt->fetchAll());
 
         return [
