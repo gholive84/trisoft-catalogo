@@ -49,10 +49,10 @@ $pdo = Database::connection();
 $args = $argv;
 array_shift($args);
 $pdfPath  = null;
-$density  = 300;
-$quality  = 92;
-$heroW    = 2560;
-$heroH    = 1440;
+$density  = 400;       // antes 300 — captura o máximo de detalhe do PDF
+$quality  = 95;        // antes 92
+$heroW    = 3200;      // antes 2560 — Retina-ready
+$heroH    = 1800;      // antes 1440 (16:9)
 $limit    = 0;
 $force    = false;
 $skipHero = false;
@@ -108,12 +108,17 @@ fwrite(STDOUT, "Produtos a processar: " . count($products) . "\n\n");
  */
 function renderHero(string $magickBin, string $pdfPath, int $pageIdx, int $density, int $quality, int $w, int $h, string $outFile): bool
 {
+    // -define jpeg:dct-method=float — DCT mais preciso (qualidade visual melhor)
+    // -unsharp mais agressivo (radius 0, sigma 0.8, amount 0.8, threshold 0.005)
+    // -filter Mitchell — bom para downscale com nitidez (era Lanczos)
     $cmd = sprintf(
         '%s -density %d %s[%d] ' .
         '-background white -alpha remove -alpha off ' .
-        '-filter Lanczos -resize %dx%d^ -gravity center -extent %dx%d ' .
-        '-unsharp 0x0.5+0.5+0.008 ' .
-        '-sampling-factor 4:2:0 -strip -interlace Plane -colorspace sRGB ' .
+        '-colorspace sRGB ' .
+        '-filter Mitchell -resize %dx%d^ -gravity center -extent %dx%d ' .
+        '-unsharp 0x0.8+0.8+0.005 ' .
+        '-sampling-factor 4:2:0 -strip -interlace Plane ' .
+        '-define jpeg:dct-method=float ' .
         '-quality %d %s 2>&1',
         escapeshellcmd($magickBin), $density, escapeshellarg($pdfPath), $pageIdx,
         $w, $h, $w, $h,

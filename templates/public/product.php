@@ -18,12 +18,15 @@ $primaryCategory = $categories[0] ?? null;
 <section class="relative">
     <div class="h-[55vh] md:h-[65vh] lg:h-[72vh] max-h-[760px] bg-gray-900 overflow-hidden relative">
         <?php if ($heroUrl): ?>
-            <!-- Ken Burns: zoom + pan lento -->
+            <!-- Ken Burns: zoom + pan lento (começa em scale=1 para preservar nitidez) -->
             <div class="absolute inset-0 ken-burns">
                 <img src="<?= e($heroUrl) ?>" alt="<?= e($product['name']) ?>"
-                     class="w-full h-full object-cover">
+                     class="w-full h-full object-cover"
+                     fetchpriority="high"
+                     decoding="async">
             </div>
-            <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-black/10"></div>
+            <!-- Gradient só no rodapé (área superior da imagem fica limpa) -->
+            <div class="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/70 via-black/30 to-transparent pointer-events-none"></div>
         <?php else: ?>
             <div class="w-full h-full flex items-center justify-center">
                 <svg class="w-24 h-24 text-gray-300" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4-4m0 0l4-4m-4 4l4 4m4-12h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/></svg>
@@ -63,13 +66,16 @@ $primaryCategory = $categories[0] ?? null;
 </section>
 
 <style>
+    /* Ken Burns sutil: começa em 1:1 (mantém nitidez) e expande lentamente.
+       Cobertura via padrão CSS: o IMG enche o container e o transform aplica
+       no wrapper sem cropar (overflow:hidden no parent já cuida). */
     @keyframes ken-burns {
-        0%   { transform: scale(1.05) translate(0, 0); }
-        50%  { transform: scale(1.12) translate(-1.5%, -1%); }
-        100% { transform: scale(1.05) translate(0, 0); }
+        0%   { transform: scale(1.00) translate(0, 0); }
+        50%  { transform: scale(1.07) translate(-1%, -0.6%); }
+        100% { transform: scale(1.00) translate(0, 0); }
     }
-    .ken-burns { animation: ken-burns 24s ease-in-out infinite; will-change: transform; }
-    .ken-burns img { width: 100%; height: 100%; object-fit: cover; }
+    .ken-burns { animation: ken-burns 28s ease-in-out infinite; will-change: transform; transform-origin: center; }
+    .ken-burns img { width: 100%; height: 100%; object-fit: cover; image-rendering: -webkit-optimize-contrast; }
 </style>
 
 <!-- CONTEÚDO (max 1280px) -->
