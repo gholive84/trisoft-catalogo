@@ -204,7 +204,7 @@ $primaryCategory = $categories[0] ?? null;
                 if ($line === '') continue;
             ?>
                 <p>
-                <?php if (preg_match('/^([\w \-/]+):\s*(.+)$/u', $line, $m)): ?>
+                <?php if (preg_match('#^([\w \-/]+):\s*(.+)$#u', $line, $m)): ?>
                     <strong class="text-brand-ink"><?= e($m[1]) ?>:</strong> <?= e($m[2]) ?>
                 <?php else: ?>
                     <?= e($line) ?>

@@ -218,6 +218,72 @@ final class AnalyticsRepository
         return (int) $stmt->fetchColumn();
     }
 
+    /**
+     * Sessões ativas agora (atividade nos últimos N minutos).
+     * Para visitantes anônimos: distintos session_id.
+     * Para logados: agrupados por user_id.
+     * @return array<int, array{user_id:?int,name:?string,email:?string,session_id:string,last_seen:string,pages:int}>
+     */
+    public function activeNow(int $minutes = 15, int $limit = 20): array
+    {
+        $sql = "SELECT
+                    pv.session_id,
+                    pv.user_id,
+                    u.name,
+                    u.email,
+                    u.role,
+                    MAX(pv.created_at) AS last_seen,
+                    COUNT(*) AS pages,
+                    (SELECT url FROM page_views WHERE session_id = pv.session_id ORDER BY created_at DESC LIMIT 1) AS last_url
+                  FROM page_views pv
+             LEFT JOIN users u ON u.id = pv.user_id
+                 WHERE pv.created_at >= NOW() - INTERVAL :m MINUTE
+              GROUP BY pv.session_id, pv.user_id, u.name, u.email, u.role
+              ORDER BY last_seen DESC
+                 LIMIT {$limit}";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['m' => $minutes]);
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Últimas N sessões (visitantes ou usuários), independente de estarem online agora.
+     * @return array<int, array>
+     */
+    public function recentVisitors(int $days = 30, int $limit = 30): array
+    {
+        $sql = "SELECT
+                    pv.session_id,
+                    pv.user_id,
+                    u.name,
+                    u.email,
+                    u.role,
+                    MIN(pv.created_at) AS first_seen,
+                    MAX(pv.created_at) AS last_seen,
+                    COUNT(*) AS pages,
+                    (SELECT url FROM page_views WHERE session_id = pv.session_id ORDER BY created_at DESC LIMIT 1) AS last_url,
+                    (SELECT ip_address FROM page_views WHERE session_id = pv.session_id ORDER BY created_at DESC LIMIT 1) AS ip_address
+                  FROM page_views pv
+             LEFT JOIN users u ON u.id = pv.user_id
+                 WHERE pv.created_at >= NOW() - INTERVAL :d DAY
+              GROUP BY pv.session_id, pv.user_id, u.name, u.email, u.role
+              ORDER BY last_seen DESC
+                 LIMIT {$limit}";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['d' => $days]);
+        return $stmt->fetchAll();
+    }
+
+    public function activeSessionsCount(int $minutes = 15): int
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT COUNT(DISTINCT session_id) FROM page_views
+              WHERE created_at >= NOW() - INTERVAL :m MINUTE"
+        );
+        $stmt->execute(['m' => $minutes]);
+        return (int) $stmt->fetchColumn();
+    }
+
     public function abandonedCartsCount(int $minDaysIdle = 3): int
     {
         $stmt = $this->pdo->prepare(

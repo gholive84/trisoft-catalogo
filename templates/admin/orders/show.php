@@ -57,7 +57,7 @@ $canRespond = in_array($order['status'], ['quote_requested', 'quoted'], true);
                     <?php foreach ($items as $i):
                         $snap = is_array($i['product_snapshot'])
                             ? $i['product_snapshot']
-                            : json_decode((string) $i['product_snapshot'], true) ?: [];
+                            : (json_decode((string) $i['product_snapshot'], true) ?: []);
                     ?>
                         <tr>
                             <td class="px-4 py-3">

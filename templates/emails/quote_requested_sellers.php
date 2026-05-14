@@ -32,7 +32,7 @@
           </thead>
           <tbody>
             <?php foreach ($items as $i):
-                $snap = is_array($i['product_snapshot']) ? $i['product_snapshot'] : json_decode((string) $i['product_snapshot'], true) ?: [];
+                $snap = is_array($i['product_snapshot']) ? $i['product_snapshot'] : (json_decode((string) $i['product_snapshot'], true) ?: []);
             ?>
               <tr style="border-top:1px solid #e5e7eb;">
                 <td style="padding:8px;">

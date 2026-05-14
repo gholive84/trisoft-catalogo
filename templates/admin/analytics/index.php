@@ -27,7 +27,15 @@ $pct = function (int $part, int $total): string {
 </div>
 
 <!-- KPIs -->
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+    <div class="bg-white rounded-2xl border border-brand-line p-5">
+        <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <div class="text-xs text-brand-muted uppercase tracking-widest">Online agora</div>
+        </div>
+        <div class="font-display text-3xl font-semibold text-brand-ink mt-2"><?= e(number_format($activeNowCount, 0, ',', '.')) ?></div>
+        <div class="text-[11px] text-brand-muted mt-1">últimos 15 min</div>
+    </div>
     <div class="bg-white rounded-2xl border border-brand-line p-5">
         <div class="text-xs text-brand-muted uppercase tracking-widest">Visitantes únicos</div>
         <div class="font-display text-3xl font-semibold text-brand-ink mt-2"><?= e(number_format($visitors, 0, ',', '.')) ?></div>
@@ -49,6 +57,113 @@ $pct = function (int $part, int $total): string {
         <div class="text-[11px] text-brand-muted mt-1">≥ 3 dias sem atividade</div>
     </div>
 </div>
+
+<!-- Online agora -->
+<?php if (!empty($activeNow)): ?>
+<div class="bg-white rounded-2xl border border-brand-line overflow-hidden mb-8">
+    <div class="px-6 py-4 border-b border-brand-line flex items-center justify-between">
+        <h2 class="font-display font-semibold text-brand-ink flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            Online agora
+        </h2>
+        <span class="text-xs text-brand-muted"><?= count($activeNow) ?> sessão(ões) ativa(s) · últimos 15 min</span>
+    </div>
+    <table class="w-full text-sm">
+        <thead class="bg-gray-50 text-xs uppercase tracking-widest text-brand-muted">
+            <tr>
+                <th class="px-6 py-3 text-left">Usuário</th>
+                <th class="px-6 py-3 text-left">Última página</th>
+                <th class="px-6 py-3 text-right w-20">Páginas</th>
+                <th class="px-6 py-3 text-right w-32">Última atividade</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-brand-line">
+            <?php foreach ($activeNow as $s):
+                $isLogged = !empty($s['user_id']);
+                $name = $isLogged ? $s['name'] : 'Visitante ' . substr($s['session_id'], 0, 6);
+                $diff = time() - strtotime($s['last_seen']);
+                $ago = $diff < 60 ? 'agora' : ($diff < 3600 ? floor($diff / 60) . ' min' : floor($diff / 3600) . 'h');
+            ?>
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-3">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 <?= $isLogged ? 'bg-brand-blue/10 text-brand-blue' : 'bg-gray-100 text-gray-500' ?>">
+                                <?= e(strtoupper(mb_substr($name, 0, 2))) ?>
+                            </div>
+                            <div class="min-w-0">
+                                <div class="font-medium text-brand-ink truncate"><?= e($name) ?></div>
+                                <?php if ($isLogged): ?>
+                                    <div class="text-xs text-brand-muted truncate"><?= e($s['email']) ?> · <?= e($s['role']) ?></div>
+                                <?php else: ?>
+                                    <div class="text-xs text-brand-muted">anônimo</div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-3 text-brand-muted text-xs font-mono truncate max-w-md">
+                        <?= e($s['last_url'] ?? '—') ?>
+                    </td>
+                    <td class="px-6 py-3 text-right text-brand-muted"><?= e((string) $s['pages']) ?></td>
+                    <td class="px-6 py-3 text-right text-brand-muted text-xs"><?= e($ago) ?></td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+</div>
+<?php endif; ?>
+
+<!-- Últimos visitantes -->
+<?php if (!empty($recentVisitors)): ?>
+<div class="bg-white rounded-2xl border border-brand-line overflow-hidden mb-8">
+    <div class="px-6 py-4 border-b border-brand-line flex items-center justify-between">
+        <h2 class="font-display font-semibold text-brand-ink">Últimos visitantes</h2>
+        <span class="text-xs text-brand-muted">Mais recentes nos últimos <?= e((string) $days) ?> dias</span>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-xs uppercase tracking-widest text-brand-muted">
+                <tr>
+                    <th class="px-6 py-3 text-left">Usuário</th>
+                    <th class="px-6 py-3 text-left">Última página</th>
+                    <th class="px-6 py-3 text-left">IP</th>
+                    <th class="px-6 py-3 text-right w-20">Páginas</th>
+                    <th class="px-6 py-3 text-right w-32">Última visita</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-brand-line">
+                <?php foreach ($recentVisitors as $s):
+                    $isLogged = !empty($s['user_id']);
+                    $name = $isLogged ? $s['name'] : 'Visitante ' . substr($s['session_id'], 0, 6);
+                ?>
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-3">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 <?= $isLogged ? 'bg-brand-blue/10 text-brand-blue' : 'bg-gray-100 text-gray-500' ?>">
+                                    <?= e(strtoupper(mb_substr($name, 0, 2))) ?>
+                                </div>
+                                <div class="min-w-0">
+                                    <div class="font-medium text-brand-ink truncate"><?= e($name) ?></div>
+                                    <?php if ($isLogged): ?>
+                                        <div class="text-[11px] text-brand-muted truncate"><?= e($s['email']) ?></div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-3 text-brand-muted text-xs font-mono truncate max-w-xs">
+                            <?= e($s['last_url'] ?? '—') ?>
+                        </td>
+                        <td class="px-6 py-3 text-brand-muted text-xs font-mono">
+                            <?= e($s['ip_address'] ?? '—') ?>
+                        </td>
+                        <td class="px-6 py-3 text-right text-brand-muted"><?= e((string) $s['pages']) ?></td>
+                        <td class="px-6 py-3 text-right text-brand-muted text-xs"><?= e(date_br($s['last_seen'], 'd/m H:i')) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+<?php endif; ?>
 
 <!-- Gráfico de tráfego -->
 <div class="bg-white rounded-2xl border border-brand-line p-6 mb-8">
