@@ -1,42 +1,35 @@
 <?php /** @var App\Core\View $this */ $this->extend('layouts/public'); ?>
 
 <?php $this->section('content'); ?>
-<section class="bg-brand-radial text-white">
-    <div class="max-w-7xl mx-auto px-4 py-12 lg:py-16">
-        <h1 class="font-display text-3xl md:text-5xl font-bold">Buscar produtos</h1>
+<section class="max-w-7xl mx-auto px-6 lg:px-10 pt-12 lg:pt-16 pb-6 text-center">
+    <h1 class="display text-5xl md:text-6xl text-brand-ink">Buscar</h1>
+    <?php if ($query !== ''): ?>
+        <p class="text-brand-muted mt-4">
+            <?= e((string) $pagination['total']) ?> resultado(s) para "<strong class="text-brand-ink"><?= e($query) ?></strong>"
+        </p>
+    <?php endif; ?>
 
-        <form method="get" action="<?= e(url('busca')) ?>" class="mt-6 max-w-2xl">
-            <div class="relative">
-                <input type="search" name="q" value="<?= e($query) ?>" autofocus
-                       placeholder="Buscar por nome, SKU ou descrição..."
-                       class="w-full pl-12 pr-4 py-4 rounded-2xl text-brand-ink bg-white/95 backdrop-blur placeholder:text-gray-500 focus:outline-none focus:ring-4 focus:ring-white/30">
-                <svg class="w-5 h-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.817-4.816A6 6 0 012 8z" clip-rule="evenodd"/>
-                </svg>
-            </div>
-        </form>
-
-        <?php if ($query !== ''): ?>
-            <div class="mt-4 text-sm text-white/80">
-                <?= e((string) $pagination['total']) ?> resultado(s) para "<strong class="text-white"><?= e($query) ?></strong>"
-            </div>
-        <?php endif; ?>
-    </div>
+    <form method="get" action="<?= e(url('busca')) ?>" class="max-w-xl mx-auto mt-8">
+        <div class="relative">
+            <input type="search" name="q" value="<?= e($query) ?>" autofocus placeholder="Buscar produtos, SKU, descrição..."
+                   class="w-full bg-gray-100 border border-transparent rounded-full pl-12 pr-6 py-3 text-sm placeholder:text-gray-400 focus:bg-white focus:border-brand-line focus:ring-2 focus:ring-gray-200 transition">
+            <svg class="w-4 h-4 text-gray-400 absolute left-5 top-1/2 -translate-y-1/2" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.817-4.816A6 6 0 012 8z" clip-rule="evenodd"/>
+            </svg>
+        </div>
+    </form>
 </section>
 
-<div class="max-w-7xl mx-auto px-4 py-10">
+<section class="max-w-7xl mx-auto px-6 lg:px-10 py-8">
     <?php if ($query === ''): ?>
-        <div class="text-center text-gray-500 py-12">Digite uma busca acima para encontrar produtos.</div>
+        <div class="text-center text-brand-muted py-12">Digite uma busca acima para encontrar produtos.</div>
     <?php elseif ($pagination['items'] === []): ?>
-        <div class="bg-white border border-dashed border-gray-300 rounded-2xl p-16 text-center">
-            <svg class="w-16 h-16 text-gray-300 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-            </svg>
-            <p class="text-gray-500 mt-4">Nenhum produto encontrado.</p>
-            <p class="text-xs text-gray-400 mt-1">Tente outras palavras ou explore as categorias.</p>
+        <div class="bg-gray-50 border border-dashed border-gray-200 rounded-2xl p-16 text-center">
+            <p class="text-brand-muted">Nenhum produto encontrado.</p>
+            <p class="text-xs text-gray-400 mt-1">Tente outras palavras.</p>
         </div>
     <?php else: ?>
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-10">
             <?php foreach ($pagination['items'] as $product): ?>
                 <?php $this->partial('product_card', ['product' => $product]); ?>
             <?php endforeach; ?>
@@ -48,5 +41,5 @@
             'query'      => ['q' => $query],
         ]); ?>
     <?php endif; ?>
-</div>
+</section>
 <?php $this->endSection(); ?>

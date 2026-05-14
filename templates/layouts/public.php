@@ -4,7 +4,7 @@
 <head>
     <?php $this->partial('head', ['title' => $title ?? null, 'metaDescription' => $metaDescription ?? null]); ?>
 </head>
-<body class="bg-brand-cream text-brand-ink antialiased min-h-screen flex flex-col">
+<body class="bg-white text-brand-ink min-h-screen flex flex-col">
 
     <?php $this->partial('header'); ?>
     <?php $this->partial('flash'); ?>

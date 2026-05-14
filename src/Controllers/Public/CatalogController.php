@@ -35,39 +35,35 @@ final class CatalogController
         }
 
         $page    = (int) $request->query('page', 1);
-        $perPage = (int) $request->query('per', 12);
+        $perPage = (int) $request->query('per', 24);
         $sort    = (string) $request->query('sort', 'newest');
 
-        // Filtros e ordenação por preço só fazem sentido para staff (que vê preço).
-        // Para visitantes/customers, ignoramos esses parâmetros para evitar leak de preço
-        // via probing (ex.: ?min=100&max=200).
         $canPrice = \App\Core\Auth::isStaff();
-
         $minPrice = $canPrice && $request->query('min') !== null && $request->query('min') !== ''
             ? (float) $request->query('min') : null;
         $maxPrice = $canPrice && $request->query('max') !== null && $request->query('max') !== ''
             ? (float) $request->query('max') : null;
-
         if (!$canPrice && in_array($sort, ['price_asc', 'price_desc'], true)) {
             $sort = 'newest';
         }
 
         $catIds = $this->cats->descendantIds((int) $category['id']);
-
         $result = $this->products->paginateByCategoryIds(
             $catIds, $page, $perPage, $sort, $minPrice, $maxPrice
         );
 
         return $this->view->render('public/category', [
-            'title'       => $category['name'],
+            'title'          => $category['name'],
             'metaDescription' => $category['meta_description'] ?? null,
-            'category'    => $category,
-            'breadcrumbs' => $this->tree->breadcrumbs((int) $category['id']),
-            'children'    => $this->cats->children((int) $category['id']),
-            'pagination'  => $result,
-            'sort'        => $sort,
-            'minPrice'    => $minPrice,
-            'maxPrice'    => $maxPrice,
+            'category'       => $category,
+            'tree'           => $this->tree->tree(),
+            'activeCategory' => $category['slug'],
+            'breadcrumbs'    => $this->tree->breadcrumbs((int) $category['id']),
+            'children'       => $this->cats->children((int) $category['id']),
+            'pagination'     => $result,
+            'sort'           => $sort,
+            'minPrice'       => $minPrice,
+            'maxPrice'       => $maxPrice,
         ]);
     }
 }
