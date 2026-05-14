@@ -118,7 +118,7 @@ $products = [];
 $current  = null;
 for ($i = 0; $i < count($lines); $i++) {
     $line = $lines[$i];
-    $trimmed = trim($line);
+    $trimmed = trim($line, " \t\n\r\0\x0B\x0C"); // inclui form feed (\f) do PDF
 
     if (preg_match('/^BAFFLE\s+([A-Z]+)\s+([A-Z]+(?:\s+[A-Z]+)*)$/u', $trimmed, $m)) {
         if ($current !== null && !empty($current['specs'])) {
