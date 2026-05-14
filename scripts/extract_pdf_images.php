@@ -136,15 +136,13 @@ function renderModulation(string $magickBin, string $pdfPath, int $pageIdx, int 
     exec($cmd1, $_, $rc1);
     if ($rc1 !== 0 || !file_exists($tmpPage)) return false;
 
-    // Identifica dimensões reais da página renderizada
-    exec(sprintf('%s -format "%%w %%h" %s 2>&1',
-        escapeshellcmd($magickBin), escapeshellarg($tmpPage)
-    ), $idOut, $rcId);
-    if ($rcId !== 0 || empty($idOut)) {
+    // Identifica dimensões reais da página renderizada (via PHP getimagesize)
+    $info = @getimagesize($tmpPage);
+    if (!$info || empty($info[0]) || empty($info[1])) {
         @unlink($tmpPage);
         return false;
     }
-    [$pageW, $pageH] = array_map('intval', explode(' ', trim($idOut[0])));
+    [$pageW, $pageH] = [(int) $info[0], (int) $info[1]];
 
     // Parseia $cropSpec: WxH+X+Y, com possíveis %
     if (!preg_match('/^(\d+%?)x(\d+%?)\+(\d+%?)\+(\d+%?)$/', $cropSpec, $m)) {
