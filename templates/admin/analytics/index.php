@@ -72,7 +72,9 @@ $pct = function (int $part, int $total): string {
         ['Adicionou ao carrinho',$funnel['add_to_cart'],   'bg-brand-green/10 text-brand-green-dark'],
         ['Solicitou orçamento',  $funnel['quotes'],        'bg-amber-50 text-amber-700'],
     ];
-    $maxValue = max(array_map(fn ($s) => $s[1], $steps), 1);
+    $stepValues = array_map(fn ($s) => $s[1], $steps);
+    $stepValues[] = 1;
+    $maxValue = max($stepValues);
     ?>
     <div class="space-y-3">
         <?php foreach ($steps as $i => [$label, $value, $color]):
