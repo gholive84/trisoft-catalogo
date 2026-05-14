@@ -19,5 +19,5 @@ ALTER TABLE products
 -- Imagem de banner (hero) na página interna do produto
 ALTER TABLE products
   ADD COLUMN hero_image_path VARCHAR(255) NULL
-  COMMENT 'Imagem hero (banner) na página interna; se NULL usa main image'
+  COMMENT 'Imagem hero (banner) na pagina interna - se NULL usa main image'
   AFTER description;
