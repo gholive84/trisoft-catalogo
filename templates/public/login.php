@@ -7,23 +7,24 @@
 <body class="bg-brand-ink text-brand-ink min-h-screen relative overflow-hidden"
       x-data="{ cartOpen: false }">
 
-<!-- BG image (foto premium do catálogo) -->
+<!-- BG image (foto clean do catálogo) -->
 <div class="absolute inset-0 z-0">
-    <img src="<?= e(upload_url('products/baffle-form-trapezium-solid.jpg')) ?>"
+    <img src="<?= e(upload_url('products/baffle-classic-wave-solid.jpg')) ?>"
          alt=""
          class="w-full h-full object-cover"
          onerror="this.style.display='none'">
-    <div class="absolute inset-0 bg-gradient-to-br from-black/75 via-black/55 to-black/85"></div>
+    <div class="absolute inset-0 bg-gradient-to-br from-white/85 via-white/55 to-white/75"></div>
+    <div class="absolute inset-0 bg-gradient-to-t from-brand-cream/40 via-transparent to-transparent"></div>
 </div>
 
 <!-- Header minimal -->
 <header class="relative z-10">
     <div class="max-w-content mx-auto px-6 lg:px-10 h-20 flex items-center">
         <a href="<?= e(url('/')) ?>" class="flex items-center">
-            <img src="<?= e(asset('images/logo.png')) ?>" alt="Trisoft" class="h-10 w-auto brightness-0 invert" style="max-width: 170px;">
+            <img src="<?= e(asset('images/logo.png')) ?>" alt="Trisoft" class="h-10 w-auto" style="max-width: 170px;">
         </a>
         <div class="ml-auto">
-            <a href="<?= e(url('/')) ?>" class="text-white/80 hover:text-white text-xs uppercase tracking-widest font-medium">
+            <a href="<?= e(url('/')) ?>" class="text-brand-ink hover:text-brand-blue text-xs uppercase tracking-widest font-medium">
                 ← Voltar ao catálogo
             </a>
         </div>
@@ -84,7 +85,7 @@
             </a>
         </div>
 
-        <div class="text-center mt-8 text-white/70 text-xs">
+        <div class="text-center mt-8 text-brand-muted text-xs">
             <p class="uppercase tracking-widest">Trisoft Revestimentos Funcionais</p>
             <p class="mt-1">Soluções acústicas sustentáveis · 60+ anos de mercado</p>
         </div>

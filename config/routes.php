@@ -39,6 +39,9 @@ $router->get('/categoria/{slug}', [CatalogController::class, 'show']);
 $router->get('/produto/{slug}',   [ProductController::class, 'show']);
 $router->get('/busca',            [SearchController::class, 'index']);
 
+// AJAX listagem unificada (home + categoria + busca)
+$router->get('/api/produtos',     [CatalogController::class, 'listJson']);
+
 $router->get('/carrinho',                      [CartController::class, 'show']);
 $router->post('/carrinho/adicionar',           [CartController::class, 'add'],          [new CsrfMiddleware()]);
 $router->post('/carrinho/atualizar',           [CartController::class, 'update'],       [new CsrfMiddleware()]);

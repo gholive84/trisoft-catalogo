@@ -14,31 +14,63 @@ $specs = is_array($specs) ? $specs : [];
 $primaryCategory = $categories[0] ?? null;
 ?>
 
-<!-- HERO compacto (~40-55% viewport) -->
+<!-- HERO com efeito Ken Burns + CTAs sobre a imagem -->
 <section class="relative">
-    <div class="h-[38vh] md:h-[48vh] lg:h-[52vh] max-h-[560px] bg-gray-100 overflow-hidden relative">
+    <div class="h-[55vh] md:h-[65vh] lg:h-[72vh] max-h-[760px] bg-gray-900 overflow-hidden relative">
         <?php if ($heroUrl): ?>
-            <img src="<?= e($heroUrl) ?>" alt="<?= e($product['name']) ?>" class="w-full h-full object-cover">
-            <div class="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent"></div>
+            <!-- Ken Burns: zoom + pan lento -->
+            <div class="absolute inset-0 ken-burns">
+                <img src="<?= e($heroUrl) ?>" alt="<?= e($product['name']) ?>"
+                     class="w-full h-full object-cover">
+            </div>
+            <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-black/10"></div>
         <?php else: ?>
             <div class="w-full h-full flex items-center justify-center">
                 <svg class="w-24 h-24 text-gray-300" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4-4m0 0l4-4m-4 4l4 4m4-12h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/></svg>
             </div>
         <?php endif; ?>
 
-        <div class="absolute bottom-0 left-0 right-0 px-6 lg:px-10 pb-8 lg:pb-10 text-white">
+        <div class="absolute bottom-0 left-0 right-0 px-6 lg:px-10 pb-10 lg:pb-14 text-white">
             <div class="max-w-content mx-auto">
                 <?php if ($primaryCategory): ?>
-                    <div class="text-xs uppercase tracking-widest opacity-80 mb-2"><?= e($primaryCategory['name']) ?></div>
+                    <div class="text-xs uppercase tracking-widest opacity-80 mb-3">
+                        <a href="<?= e(url('categoria/' . $primaryCategory['slug'])) ?>" class="hover:text-white"><?= e($primaryCategory['name']) ?></a>
+                    </div>
                 <?php endif; ?>
-                <h1 class="display text-2xl md:text-4xl lg:text-5xl uppercase tracking-tight max-w-3xl"><?= e($product['name']) ?></h1>
+                <h1 class="display text-3xl md:text-5xl lg:text-6xl uppercase tracking-tight max-w-3xl drop-shadow-lg"><?= e($product['name']) ?></h1>
                 <?php if (!empty($product['subtitle'])): ?>
-                    <p class="text-sm md:text-base mt-2 uppercase tracking-widest opacity-90"><?= e($product['subtitle']) ?></p>
+                    <p class="text-base md:text-lg mt-3 uppercase tracking-widest opacity-90 drop-shadow"><?= e($product['subtitle']) ?></p>
                 <?php endif; ?>
+
+                <!-- CTAs sobre o hero -->
+                <div class="flex flex-col sm:flex-row gap-3 mt-7">
+                    <button type="button"
+                            onclick="addToCart(<?= (int) $product['id'] ?>, 1, this)"
+                            class="inline-flex items-center justify-center gap-2 bg-brand-blue text-white px-7 py-3.5 rounded-full font-medium hover:bg-brand-blue-dark transition shadow-2xl disabled:opacity-60">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17"/></svg>
+                        Adicionar ao Carrinho
+                    </button>
+                    <button type="button"
+                            onclick="addToCart(<?= (int) $product['id'] ?>, 1, this).then(() => setTimeout(() => window.location.href='<?= e(url('carrinho')) ?>', 400))"
+                            class="inline-flex items-center justify-center gap-2 bg-white/95 backdrop-blur text-brand-ink px-7 py-3.5 rounded-full font-medium hover:bg-white transition shadow-2xl">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                        Solicitar Orçamento
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 </section>
+
+<style>
+    @keyframes ken-burns {
+        0%   { transform: scale(1.05) translate(0, 0); }
+        50%  { transform: scale(1.12) translate(-1.5%, -1%); }
+        100% { transform: scale(1.05) translate(0, 0); }
+    }
+    .ken-burns { animation: ken-burns 24s ease-in-out infinite; will-change: transform; }
+    .ken-burns img { width: 100%; height: 100%; object-fit: cover; }
+</style>
 
 <!-- CONTEÚDO (max 1280px) -->
 <section class="max-w-content mx-auto px-6 lg:px-10 py-10 lg:py-14">
@@ -143,21 +175,18 @@ $primaryCategory = $categories[0] ?? null;
         </div>
     <?php endif; ?>
 
-    <!-- CTAs (AJAX add to cart) -->
+    <!-- CTAs secundários (logo abaixo dos detalhes — backup pros usuários que rolaram a página) -->
     <div class="flex flex-col sm:flex-row items-center justify-center gap-3 mb-10">
         <button type="button"
                 onclick="addToCart(<?= (int) $product['id'] ?>, 1, this)"
-                class="inline-flex items-center justify-center gap-2 bg-brand-blue text-white px-8 py-3.5 rounded-full font-medium hover:bg-brand-blue-dark transition min-w-[220px] disabled:opacity-60 disabled:cursor-not-allowed">
+                class="inline-flex items-center justify-center gap-2 bg-brand-blue text-white px-8 py-3.5 rounded-full font-medium hover:bg-brand-blue-dark transition min-w-[220px] disabled:opacity-60">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17"/></svg>
             Adicionar ao Carrinho
         </button>
-
-        <button type="button"
-                onclick="addToCart(<?= (int) $product['id'] ?>, 1, this).then(() => setTimeout(() => window.location.href='<?= e(url('carrinho')) ?>', 400))"
-                class="inline-flex items-center justify-center gap-2 bg-brand-ink text-white px-8 py-3.5 rounded-full font-medium hover:bg-black transition min-w-[220px]">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-            Solicitar Orçamento
-        </button>
+        <a href="<?= e(url('carrinho')) ?>"
+           class="inline-flex items-center justify-center gap-2 bg-brand-ink text-white px-8 py-3.5 rounded-full font-medium hover:bg-black transition min-w-[220px]">
+            Ver carrinho
+        </a>
     </div>
 
     <?php if (!empty($product['description'])): ?>

@@ -45,19 +45,20 @@ $showPrice = can_see_prices();
                             <div class="text-[10px] uppercase tracking-widest text-brand-muted mt-1">SKU <?= e($i['sku']) ?></div>
 
                             <div class="mt-3 flex items-center gap-4">
-                                <form method="post" action="<?= e(url('carrinho/atualizar')) ?>" class="inline-flex items-center bg-gray-100 rounded-full">
-                                    <?= csrf_field() ?>
-                                    <input type="hidden" name="item_id" value="<?= e((string) $i['item_id']) ?>">
-                                    <button type="submit" name="quantity" value="<?= e((string) max(0, (int) $i['quantity'] - 1)) ?>" class="w-7 h-7 flex items-center justify-center text-brand-muted hover:text-brand-ink">−</button>
-                                    <span class="w-8 text-center text-sm font-medium"><?= e((string) $i['quantity']) ?></span>
-                                    <button type="submit" name="quantity" value="<?= e((string) ((int) $i['quantity'] + 1)) ?>" class="w-7 h-7 flex items-center justify-center text-brand-muted hover:text-brand-ink">+</button>
-                                </form>
+                                <div class="inline-flex items-center bg-gray-100 rounded-full overflow-hidden">
+                                    <button type="button" @click="updateCartItem(<?= (int) $i['item_id'] ?>, <?= max(0, (int) $i['quantity'] - 1) ?>)"
+                                            class="w-7 h-7 flex items-center justify-center text-brand-muted hover:text-brand-ink">−</button>
+                                    <input type="number" min="0" value="<?= e((string) $i['quantity']) ?>"
+                                           data-item-id="<?= (int) $i['item_id'] ?>"
+                                           onchange="updateCartItem(parseInt(this.dataset.itemId, 10), Math.max(0, parseInt(this.value, 10) || 0)); setTimeout(() => window.location.reload(), 400)"
+                                           onkeydown="if (event.key === 'Enter') { event.preventDefault(); this.blur(); }"
+                                           class="w-12 text-center text-sm font-medium bg-transparent border-0 focus:ring-0 focus:outline-none [appearance:textfield] [-moz-appearance:textfield]">
+                                    <button type="button" @click="updateCartItem(<?= (int) $i['item_id'] ?>, <?= ((int) $i['quantity'] + 1) ?>); setTimeout(() => window.location.reload(), 400)"
+                                            class="w-7 h-7 flex items-center justify-center text-brand-muted hover:text-brand-ink">+</button>
+                                </div>
 
-                                <form method="post" action="<?= e(url('carrinho/remover')) ?>">
-                                    <?= csrf_field() ?>
-                                    <input type="hidden" name="item_id" value="<?= e((string) $i['item_id']) ?>">
-                                    <button class="text-xs text-brand-muted hover:text-rose-600 transition">Remover</button>
-                                </form>
+                                <button type="button" @click="removeCartItem(<?= (int) $i['item_id'] ?>); setTimeout(() => window.location.reload(), 400)"
+                                        class="text-xs text-brand-muted hover:text-rose-600 transition">Remover</button>
                             </div>
                         </div>
 

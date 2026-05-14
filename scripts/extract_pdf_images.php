@@ -49,8 +49,10 @@ $pdo = Database::connection();
 $args = $argv;
 array_shift($args);
 $pdfPath  = null;
-$density  = 250;
-$quality  = 85;
+$density  = 300;
+$quality  = 92;
+$heroW    = 2560;
+$heroH    = 1440;
 $limit    = 0;
 $force    = false;
 $skipHero = false;
@@ -102,14 +104,19 @@ fwrite(STDOUT, "Produtos a processar: " . count($products) . "\n\n");
 
 /**
  * Renderiza uma página inteira do PDF como JPG (com extent fill-cover).
+ * Usa filter Lanczos pra downsizing nítido e unsharp para detalhes.
  */
-function renderHero(string $magickBin, string $pdfPath, int $pageIdx, int $density, int $quality, string $outFile): bool
+function renderHero(string $magickBin, string $pdfPath, int $pageIdx, int $density, int $quality, int $w, int $h, string $outFile): bool
 {
     $cmd = sprintf(
-        '%s -density %d %s[%d] -background white -alpha remove -alpha off ' .
-        '-resize 1920x1080^ -gravity center -extent 1920x1080 ' .
+        '%s -density %d %s[%d] ' .
+        '-background white -alpha remove -alpha off ' .
+        '-filter Lanczos -resize %dx%d^ -gravity center -extent %dx%d ' .
+        '-unsharp 0x0.5+0.5+0.008 ' .
+        '-sampling-factor 4:2:0 -strip -interlace Plane -colorspace sRGB ' .
         '-quality %d %s 2>&1',
         escapeshellcmd($magickBin), $density, escapeshellarg($pdfPath), $pageIdx,
+        $w, $h, $w, $h,
         $quality, escapeshellarg($outFile)
     );
     exec($cmd, $output, $rc);
@@ -193,7 +200,7 @@ foreach ($products as $p) {
             fwrite(STDOUT, "· hero existe:        {$slug}.jpg\n");
         } else {
             $tmpHero = $heroFile . '.tmp.jpg';
-            if (renderHero($magickBin, $pdfPath, $page - 1, $density, $quality, $tmpHero)) {
+            if (renderHero($magickBin, $pdfPath, $page - 1, $density, $quality, $heroW, $heroH, $tmpHero)) {
                 rename($tmpHero, $heroFile);
                 $heroBase = basename($heroFile);
                 $pdo->prepare("UPDATE products SET hero_image_path = ? WHERE id = ?")
