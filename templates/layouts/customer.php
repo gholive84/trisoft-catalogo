@@ -2,27 +2,33 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title><?= e($title ?? 'Minha conta') ?> — Catálogo Trisoft</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>body{font-family:'Inter',system-ui,sans-serif;}</style>
+    <?php $this->partial('head', ['title' => $title ?? 'Minha conta']); ?>
 </head>
-<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+<body class="bg-brand-cream text-brand-ink min-h-screen flex flex-col">
 
     <?php $this->partial('header'); ?>
     <?php $this->partial('flash'); ?>
 
-    <div class="flex-1 max-w-7xl mx-auto w-full px-4 py-8 grid grid-cols-1 md:grid-cols-[220px_1fr] gap-8">
-        <aside class="bg-white rounded-lg border border-gray-200 p-4 h-fit">
-            <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Minha conta</h3>
-            <nav class="flex flex-col gap-1 text-sm">
-                <a href="<?= e(url('minha-conta')) ?>" class="px-3 py-2 rounded hover:bg-gray-100">Painel</a>
-                <a href="<?= e(url('minha-conta/orcamentos')) ?>" class="px-3 py-2 rounded hover:bg-gray-100">Meus orçamentos</a>
-                <a href="<?= e(url('minha-conta/enderecos')) ?>" class="px-3 py-2 rounded hover:bg-gray-100">Endereços</a>
-                <a href="<?= e(url('minha-conta/perfil')) ?>" class="px-3 py-2 rounded hover:bg-gray-100">Meus dados</a>
+    <div class="flex-1 max-w-7xl mx-auto w-full px-4 py-8 grid grid-cols-1 md:grid-cols-[240px_1fr] gap-8">
+        <aside class="bg-white rounded-2xl shadow-soft border border-gray-200 p-4 h-fit">
+            <h3 class="text-xs font-display font-semibold text-gray-500 uppercase tracking-widest mb-3 px-2">Minha conta</h3>
+            <nav class="flex flex-col gap-0.5 text-sm">
+                <?php $current = $_SERVER['REQUEST_URI'] ?? ''; ?>
+                <?php
+                $links = [
+                    ['url' => url('minha-conta'),               'label' => 'Painel',         'icon' => 'M3 12l9-9 9 9M5 10v10h14V10'],
+                    ['url' => url('minha-conta/orcamentos'),    'label' => 'Meus orçamentos','icon' => 'M9 12h6m-6 4h6M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z'],
+                    ['url' => url('minha-conta/enderecos'),     'label' => 'Endereços',      'icon' => 'M12 2C8 2 5 5 5 9c0 7 7 13 7 13s7-6 7-13c0-4-3-7-7-7zm0 9a2 2 0 110-4 2 2 0 010 4z'],
+                    ['url' => url('minha-conta/perfil'),        'label' => 'Meus dados',     'icon' => 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'],
+                ];
+                foreach ($links as $l):
+                    $active = rtrim($current, '/') === rtrim($l['url'], '/');
+                ?>
+                    <a href="<?= e($l['url']) ?>" class="px-3 py-2.5 rounded-lg flex items-center gap-2.5 text-sm <?= $active ? 'bg-brand-blue/10 text-brand-blue font-semibold' : 'text-gray-700 hover:bg-gray-50' ?>">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="<?= $l['icon'] ?>"/></svg>
+                        <?= e($l['label']) ?>
+                    </a>
+                <?php endforeach; ?>
             </nav>
         </aside>
 

@@ -41,3 +41,4 @@ package-lock.json
 *.key
 id_rsa*
 id_ed25519*
+/catalogos/
