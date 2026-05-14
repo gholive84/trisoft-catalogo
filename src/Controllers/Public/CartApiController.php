@@ -53,6 +53,17 @@ final class CartApiController
             Response::json(['success' => false, 'message' => 'Não foi possível adicionar.'], 422);
         }
 
+        // Registra evento de analytics
+        try {
+            (new \App\Repositories\AnalyticsRepository())->recordEvent(
+                'add_to_cart',
+                ['product_id' => $productId, 'quantity' => $quantity],
+                Auth::check() ? Auth::id() : null,
+                \App\Middleware\AnalyticsMiddleware::visitorId(),
+                $request->referer() ?: null
+            );
+        } catch (\Throwable) {}
+
         Response::json($this->cartState(true));
     }
 

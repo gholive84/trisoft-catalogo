@@ -19,13 +19,16 @@ use App\Controllers\Admin\ProductController as AdminProductController;
 use App\Controllers\Admin\UserController as AdminUserController;
 use App\Controllers\Customer\DashboardController as CustomerDashboard;
 use App\Controllers\Customer\OrderController as CustomerOrderController;
+use App\Controllers\Admin\AnalyticsController as AdminAnalyticsController;
 use App\Controllers\Public\AuthController;
 use App\Controllers\Public\CartApiController;
 use App\Controllers\Public\CartController;
 use App\Controllers\Public\CatalogController;
+use App\Controllers\Public\EventApiController;
 use App\Controllers\Public\HomeController;
 use App\Controllers\Public\ProductController;
 use App\Controllers\Public\SearchController;
+use App\Middleware\AnalyticsMiddleware;
 use App\Middleware\AuthMiddleware;
 use App\Middleware\CsrfMiddleware;
 use App\Middleware\RoleMiddleware;
@@ -33,11 +36,16 @@ use App\Middleware\RoleMiddleware;
 /** @var Router $router */
 
 // ============== PÚBLICO ==============
-$router->get('/', [HomeController::class, 'index']);
+$analytics = new AnalyticsMiddleware();
 
-$router->get('/categoria/{slug}', [CatalogController::class, 'show']);
-$router->get('/produto/{slug}',   [ProductController::class, 'show']);
-$router->get('/busca',            [SearchController::class, 'index']);
+$router->get('/', [HomeController::class, 'index'], [$analytics]);
+
+$router->get('/categoria/{slug}', [CatalogController::class, 'show'],  [$analytics]);
+$router->get('/produto/{slug}',   [ProductController::class, 'show'],  [$analytics]);
+$router->get('/busca',            [SearchController::class, 'index'],  [$analytics]);
+
+// Endpoint AJAX para eventos JS customizados
+$router->post('/api/event', [EventApiController::class, 'record']);
 
 // AJAX listagem unificada (home + categoria + busca)
 $router->get('/api/produtos',     [CatalogController::class, 'listJson']);
@@ -133,8 +141,10 @@ $router->group(
         $r->post('/usuarios/{id}',         [AdminUserController::class, 'update'],  [$csrf]);
         $r->post('/usuarios/{id}/excluir', [AdminUserController::class, 'destroy'], [$csrf]);
 
-        // Stubs Sprint 5
-        $r->get('/analytics',     fn () => '<!doctype html><meta charset=utf-8><div style="font-family:system-ui;padding:3rem">Analytics — Sprint 5</div>');
-        $r->get('/configuracoes', fn () => '<!doctype html><meta charset=utf-8><div style="font-family:system-ui;padding:3rem">Configurações — Sprint 5</div>');
+        // Analytics
+        $r->get('/analytics', [AdminAnalyticsController::class, 'index']);
+
+        // Stub futuro
+        $r->get('/configuracoes', fn () => '<!doctype html><meta charset=utf-8><div style="font-family:system-ui;padding:3rem">Configurações — em construção</div>');
     }
 );
