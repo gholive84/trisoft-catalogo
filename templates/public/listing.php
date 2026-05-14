@@ -63,23 +63,40 @@ $initialSelected = $selectedCats ?? [];
                 </button>
             </div>
 
-            <nav class="flex flex-col gap-0.5 text-sm">
+            <nav class="flex flex-col gap-px text-sm">
                 <?php
                 $renderCategory = function (array $node, int $depth = 0) use (&$renderCategory) {
                     $id = (int) $node['id'];
                     $hasChildren = !empty($node['children']);
                 ?>
-                    <div class="text-sm">
-                        <label class="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-gray-50 cursor-pointer"
-                               style="padding-left: <?= 8 + ($depth * 16) ?>px">
+                    <div>
+                        <label class="relative block cursor-pointer rounded-xl transition-all duration-200 select-none"
+                               :class="selectedCats.includes(<?= $id ?>)
+                                        ? 'bg-brand-ink/[0.06] text-brand-ink'
+                                        : 'text-brand-muted hover:bg-gray-50 hover:text-brand-ink'">
                             <input type="checkbox" value="<?= $id ?>"
                                    @change="toggleCat(<?= $id ?>)"
                                    :checked="selectedCats.includes(<?= $id ?>)"
-                                   class="rounded border-gray-300 text-brand-ink focus:ring-brand-ink">
-                            <span class="text-brand-ink"><?= e($node['name']) ?></span>
+                                   class="sr-only peer">
+
+                            <!-- Indicador vertical à esquerda quando selecionado -->
+                            <span class="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r bg-brand-ink transition-all duration-200"
+                                  :class="selectedCats.includes(<?= $id ?>) ? 'opacity-100 scale-y-100' : 'opacity-0 scale-y-50'"></span>
+
+                            <span class="flex items-center justify-between py-2.5 pr-3"
+                                  :style="'padding-left: <?= 14 + ($depth * 14) ?>px'">
+                                <span :class="selectedCats.includes(<?= $id ?>) ? 'font-medium tracking-tight' : ''">
+                                    <?= e($node['name']) ?>
+                                </span>
+                                <!-- check sutil quando selecionado -->
+                                <svg x-show="selectedCats.includes(<?= $id ?>)" x-cloak
+                                     class="w-3.5 h-3.5 text-brand-ink ml-2 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                </svg>
+                            </span>
                         </label>
                         <?php if ($hasChildren): ?>
-                            <div class="flex flex-col gap-0.5">
+                            <div class="flex flex-col gap-px">
                                 <?php foreach ($node['children'] as $child) $renderCategory($child, $depth + 1); ?>
                             </div>
                         <?php endif; ?>
