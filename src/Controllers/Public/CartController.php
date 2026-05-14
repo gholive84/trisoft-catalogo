@@ -27,24 +27,22 @@ final class CartController
 
     public function show(Request $request): string
     {
-        // O carrinho exige login (decisão do briefing: customer-only)
         if (Auth::guest()) {
-            Session::flash('info', 'Faça login para visualizar seu carrinho de orçamento.');
+            Session::flash('info', 'Faça login para visualizar seu orçamento.');
             Session::put('_intended_url', 'carrinho');
             Response::redirect(url('login'));
         }
 
-        $summary = $this->cart->summary();
-
         return $this->view->render('public/cart', [
-            'title'    => 'Carrinho de orçamento',
-            'summary'  => $summary,
+            'title'   => 'Orçamento',
+            'summary' => $this->cart->summary(),
         ]);
     }
 
     /**
      * Adiciona produto ao carrinho. Se visitante, redireciona para login
-     * com a intenção pendente — após autenticar, o produto é incluído.
+     * com a intenção pendente. Caso contrário, redireciona de volta à página
+     * de origem e abre o drawer automaticamente.
      */
     public function add(Request $request): never
     {
@@ -61,7 +59,7 @@ final class CartController
                 'product_id' => $productId,
                 'quantity'   => $quantity,
             ]);
-            Session::put('_intended_url', 'carrinho');
+            Session::put('_intended_url', ltrim(parse_url($request->referer(), PHP_URL_PATH) ?: '/', '/'));
             Session::flash('info', 'Crie sua conta ou faça login para adicionar ao orçamento.');
             Response::redirect(url('login'));
         }
@@ -69,57 +67,76 @@ final class CartController
         $ok = $this->cart->add($productId, $quantity);
         if (!$ok) {
             Session::flash('error', 'Não foi possível adicionar este produto.');
-        } else {
-            Session::flash('success', 'Item adicionado ao orçamento.');
+            Response::redirect($request->referer() ?: url('/'));
         }
-        Response::redirect(url('carrinho'));
+
+        Session::flash('success', 'Adicionado ao orçamento.');
+
+        // Destino após adicionar:
+        //   _then=cart  → vai direto para /carrinho (botão "Solicitar Orçamento")
+        //   default     → volta pra página de origem e abre o drawer
+        if ($request->post('_then') === 'cart') {
+            Response::redirect(url('carrinho'));
+        }
+
+        Session::flash('open_cart_drawer', true);
+        Response::redirect($request->referer() ?: url('/'));
     }
 
     public function update(Request $request): never
     {
-        if (Auth::guest()) {
-            Response::redirect(url('login'));
-        }
+        if (Auth::guest()) Response::redirect(url('login'));
+
         $itemId   = (int) $request->post('item_id', 0);
         $quantity = (int) $request->post('quantity', 0);
+        $fromDrawer = $request->post('_drawer') === '1';
+
         if ($itemId > 0) {
             $this->cart->updateQuantity($itemId, $quantity);
-            Session::flash('success', $quantity <= 0 ? 'Item removido.' : 'Quantidade atualizada.');
+            if (!$fromDrawer) {
+                Session::flash('success', $quantity <= 0 ? 'Item removido.' : 'Quantidade atualizada.');
+            }
+        }
+
+        // Quando vem do drawer, abre ele de novo após o redirect
+        if ($fromDrawer) {
+            Session::flash('open_cart_drawer', true);
+            Response::redirect($request->referer() ?: url('carrinho'));
         }
         Response::redirect(url('carrinho'));
     }
 
     public function remove(Request $request): never
     {
-        if (Auth::guest()) {
-            Response::redirect(url('login'));
-        }
+        if (Auth::guest()) Response::redirect(url('login'));
+
         $itemId = (int) $request->post('item_id', 0);
+        $fromDrawer = $request->post('_drawer') === '1';
         if ($itemId > 0) {
             $this->cart->remove($itemId);
-            Session::flash('success', 'Item removido do orçamento.');
+            if (!$fromDrawer) {
+                Session::flash('success', 'Item removido do orçamento.');
+            }
+        }
+
+        if ($fromDrawer) {
+            Session::flash('open_cart_drawer', true);
+            Response::redirect($request->referer() ?: url('carrinho'));
         }
         Response::redirect(url('carrinho'));
     }
 
     public function clear(Request $request): never
     {
-        if (Auth::guest()) {
-            Response::redirect(url('login'));
-        }
+        if (Auth::guest()) Response::redirect(url('login'));
         $this->cart->clear();
         Session::flash('success', 'Carrinho esvaziado.');
         Response::redirect(url('carrinho'));
     }
 
-    /**
-     * Submete o carrinho como pedido de orçamento.
-     */
     public function requestQuote(Request $request): never
     {
-        if (Auth::guest()) {
-            Response::redirect(url('login'));
-        }
+        if (Auth::guest()) Response::redirect(url('login'));
 
         $notes = trim((string) $request->post('notes', ''));
 
@@ -133,8 +150,7 @@ final class CartController
             Response::redirect(url('carrinho'));
         }
 
-        // Recupera o número do orçamento para a tela de confirmação
-        $repo = new \App\Repositories\OrderRepository();
+        $repo  = new \App\Repositories\OrderRepository();
         $order = $repo->findById($orderId);
 
         Session::flash('success', "Pedido de orçamento {$order['order_number']} enviado!");

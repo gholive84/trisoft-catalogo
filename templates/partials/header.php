@@ -1,22 +1,29 @@
 <?php
 $current = $_SERVER['REQUEST_URI'] ?? '';
-$isProducts = str_contains($current, '/produtos') || rtrim($current, '/') === rtrim(\App\Core\Config::baseUrl(), '/') || rtrim($current, '/') === rtrim(\App\Core\Config::baseUrl() . '', '/');
+$baseUrl = \App\Core\Config::baseUrl();
+$isHome  = rtrim($current, '/') === rtrim($baseUrl, '/');
+
+// Badge do carrinho — apenas logado tem carrinho persistente
+$cartBadge = 0;
+if (auth()) {
+    try { $cartBadge = (new \App\Services\CartService())->badge(); } catch (\Throwable) {}
+}
 ?>
 <header class="bg-white border-b border-brand-line">
     <div class="max-w-7xl mx-auto px-6 lg:px-10 h-20 flex items-center">
-        <!-- Logo (esquerda) -->
+        <!-- Logo -->
         <a href="<?= e(url('/')) ?>" class="flex items-center shrink-0">
             <img src="<?= e(asset('images/logo.png')) ?>" alt="Trisoft Revestimentos" class="h-11 w-auto" style="max-width: 180px;">
         </a>
 
         <!-- Nav central -->
         <nav class="flex-1 flex justify-center items-center gap-10 text-sm tracking-widest uppercase font-medium">
-            <a href="<?= e(url('/')) ?>" class="<?= rtrim($current, '/') === rtrim(\App\Core\Config::baseUrl(), '/') ? 'text-brand-ink' : 'text-brand-muted hover:text-brand-ink' ?> transition">
+            <a href="<?= e(url('/')) ?>" class="<?= $isHome ? 'text-brand-ink' : 'text-brand-muted hover:text-brand-ink' ?> transition">
                 Produtos
             </a>
         </nav>
 
-        <!-- Ações (direita) -->
+        <!-- Ações -->
         <div class="flex items-center gap-5 text-sm">
             <?php if (auth()): ?>
                 <?php if (has_role('admin', 'editor', 'seller')): ?>
@@ -30,8 +37,9 @@ $isProducts = str_contains($current, '/produtos') || rtrim($current, '/') === rt
                 <a href="<?= e(url('login')) ?>" class="text-brand-muted hover:text-brand-ink uppercase tracking-widest text-xs font-medium">Entrar</a>
             <?php endif; ?>
 
-            <?php $cartBadge = auth() ? (new \App\Services\CartService())->badge() : 0; ?>
-            <a href="<?= e(url('carrinho')) ?>" class="relative text-brand-ink hover:text-brand-blue transition">
+            <!-- Botão do carrinho (abre drawer) -->
+            <button type="button" @click="cartOpen = true"
+                    class="relative text-brand-ink hover:text-brand-blue transition" aria-label="Abrir orçamento">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 11V7a3 3 0 016 0v4m-9 8h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/>
                 </svg>
@@ -40,7 +48,9 @@ $isProducts = str_contains($current, '/produtos') || rtrim($current, '/') === rt
                         <?= e((string) $cartBadge) ?>
                     </span>
                 <?php endif; ?>
-            </a>
+            </button>
         </div>
     </div>
 </header>
+
+<?php $this->partial('cart_drawer'); ?>

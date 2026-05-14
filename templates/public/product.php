@@ -142,17 +142,19 @@ $primaryCategory = $categories[0] ?? null;
         <input type="hidden" name="product_id" value="<?= e((string) $product['id']) ?>">
         <input type="hidden" name="quantity" value="1">
 
+        <!-- Botão primário: adiciona ao carrinho e abre o drawer lateral -->
         <button type="submit"
             class="inline-flex items-center justify-center gap-2 bg-brand-blue text-white px-8 py-3.5 rounded-full font-medium hover:bg-brand-blue-dark transition min-w-[220px]">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17"/></svg>
             Adicionar ao Carrinho
         </button>
 
-        <a href="<?= e(url('carrinho')) ?>"
-           class="inline-flex items-center justify-center gap-2 bg-brand-ink text-white px-8 py-3.5 rounded-full font-medium hover:bg-black transition min-w-[220px]">
+        <!-- Botão secundário: adiciona e vai direto para a tela de orçamento -->
+        <button type="submit" name="_then" value="cart"
+            class="inline-flex items-center justify-center gap-2 bg-brand-ink text-white px-8 py-3.5 rounded-full font-medium hover:bg-black transition min-w-[220px]">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
             Solicitar Orçamento
-        </a>
+        </button>
     </form>
 
     <!-- Notas técnicas -->
