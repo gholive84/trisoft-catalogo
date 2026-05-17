@@ -111,29 +111,31 @@ $primaryCategory = $categories[0] ?? null;
     <?php endif; ?>
 
     <?php if (!empty($specs)): ?>
-        <div class="text-center mb-6">
-            <div class="text-xs uppercase tracking-widest text-brand-muted font-medium">Sugestões de Modulação</div>
-            <?php if (!empty($product['modulation_image_path'])): ?>
+        <!-- Imagem técnica de dimensões (quando o PDF tem o desenho com cotas) -->
+        <?php if (!empty($product['dimensions_image_path'])): ?>
+            <div class="text-center mb-8">
+                <div class="text-xs uppercase tracking-widest text-brand-muted font-medium mb-4">Dimensões</div>
+                <img src="<?= e(upload_url('products/' . $product['dimensions_image_path'])) ?>"
+                     alt="Diagrama de dimensões"
+                     class="max-w-full mx-auto"
+                     style="max-height: 260px;"
+                     loading="lazy">
+            </div>
+        <?php endif; ?>
+
+        <!-- Sugestões de Modulação (apenas se o PDF tinha) -->
+        <?php if (!empty($product['modulation_image_path'])): ?>
+            <div class="text-center mb-6">
+                <div class="text-xs uppercase tracking-widest text-brand-muted font-medium">Sugestões de Modulação</div>
                 <div class="mt-5">
                     <img src="<?= e(upload_url('products/' . $product['modulation_image_path'])) ?>"
                          alt="Sugestões de modulação"
                          class="max-w-full mx-auto"
-                         style="max-height: 200px;">
+                         style="max-height: 200px;"
+                         loading="lazy">
                 </div>
-            <?php else: ?>
-                <div class="flex items-center justify-center gap-4 mt-5 opacity-60">
-                    <?php for ($i = 0; $i < min(5, count($specs)); $i++): ?>
-                        <svg class="w-12 h-9 text-brand-ink" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 64 48">
-                            <g transform="translate(<?= 4 + $i ?>, <?= 8 + $i*2 ?>)">
-                                <?php for ($j = 0; $j < 6; $j++): ?>
-                                    <line x1="<?= $j*8 ?>" y1="<?= 8 - $j*0.5 ?>" x2="<?= 50 - $j ?>" y2="<?= 12 - $j*0.3 ?>"/>
-                                <?php endfor; ?>
-                            </g>
-                        </svg>
-                    <?php endfor; ?>
-                </div>
-            <?php endif; ?>
-        </div>
+            </div>
+        <?php endif; ?>
 
         <div class="overflow-x-auto mb-10 border border-brand-line rounded-2xl">
             <table class="w-full text-sm">

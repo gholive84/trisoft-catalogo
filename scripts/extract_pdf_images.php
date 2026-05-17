@@ -6,33 +6,25 @@ declare(strict_types=1);
  * Renderiza imagens do PDF para cada produto importado, usando ImageMagick.
  *
  * Pré-requisitos:
- *   - Servidor com `magick` (ImageMagick) + `gs` (Ghostscript) — confirmado no SiteGround
- *   - import_baffles_pdf.php (ou variante) já rodou, deixando o número da
- *     página de hero em `settings._baffles_hero_page_<product_id>`
+ *   - magick (ImageMagick) + gs (Ghostscript) — confirmado no SiteGround
+ *   - import_*_pdf.php já rodou e deixou em settings:
+ *     - _baffles_hero_page_<id>   → número da página de hero
+ *     - _has_modulation_<id>      → 0 ou 1 (opcional; default 1 para retrocompat)
+ *     - _pdf_source_<id>          → nome do PDF (opcional; quando há múltiplos PDFs)
  *
- * Gera duas imagens por produto:
- *   1. HERO     → <slug>.jpg (1920x1080) renderizado da página ímpar (hero)
- *      Salvo em products.hero_image_path + product_images (is_main=1)
- *   2. MODULAÇÃO → <slug>-modulation.png (faixa horizontal) crop da página de
- *      specs (hero_page + 1), região onde aparecem os ícones de modulação.
- *      Salvo em products.modulation_image_path.
+ * Gera até 3 imagens por produto:
+ *   1. HERO        → <slug>.jpg (3200×1800 q95) renderizado da página ímpar
+ *   2. DIMENSIONS  → <slug>-dimensions.png — crop horizontal acima da tabela
+ *      (desenho técnico com cotas "A"/"B" — quando presente)
+ *   3. MODULATION  → <slug>-modulation.png — só gerada se _has_modulation=1
  *
- * Uso:
+ * Uso (catálogo único, como baffles):
  *   php scripts/extract_pdf_images.php /tmp/baffles.pdf
  *
- * Flags:
- *   --density=200    DPI de render
- *   --quality=85     JPEG quality
- *   --limit=N        processa só N produtos (debug)
- *   --force          re-renderiza mesmo que já exista
- *   --skip-hero      pula geração de hero (só modulações)
- *   --skip-modulation pula geração de modulação (só hero)
+ * Uso (múltiplos PDFs, como clouds — passa diretório):
+ *   php scripts/extract_pdf_images.php --pdf-dir=/tmp/clouds
  *
- * Mod modulação:
- *   --mod-crop="5%x10%+0+30%"
- *       formato magick (-crop) relativo: width x height + x_offset + y_offset
- *       (% da página). Default cobre a faixa de "Modulation suggestions" no
- *       layout padrão Trisoft (página A4 com hero+specs).
+ *   Procura cada produto em <pdf-dir>/<_pdf_source_<id>>.
  */
 
 require __DIR__ . '/../vendor/autoload.php';
@@ -44,37 +36,52 @@ define('BASE_PATH', dirname(__DIR__));
 Config::boot(BASE_PATH);
 $pdo = Database::connection();
 
-/* ------------------------- Args ------------------------- */
+/* ---------- Args ---------- */
 
 $args = $argv;
 array_shift($args);
 $pdfPath  = null;
-$density  = 400;       // antes 300 — captura o máximo de detalhe do PDF
-$quality  = 95;        // antes 92
-$heroW    = 3200;      // antes 2560 — Retina-ready
-$heroH    = 1800;      // antes 1440 (16:9)
+$pdfDir   = null;
+$density  = 400;
+$quality  = 95;
+$heroW    = 3200;
+$heroH    = 1800;
 $limit    = 0;
 $force    = false;
 $skipHero = false;
 $skipMod  = false;
-$modCrop  = '100%x16%+0%+42%'; // default: faixa "Modulation suggestions" no layout Trisoft padrão
+$skipDim  = false;
+$modCrop  = '100%x16%+0%+42%';
+$dimCrop  = '100%x20%+0%+18%'; // entre subtitle e tabela
+$skuFilter = null;             // ex.: '^N' para nuvem, '^B' para baffle
+
 foreach ($args as $a) {
     if ($a === '--force')             { $force = true; continue; }
     if ($a === '--skip-hero')         { $skipHero = true; continue; }
     if ($a === '--skip-modulation')   { $skipMod = true; continue; }
-    if (preg_match('/^--density=(\d+)$/', $a, $m))  { $density = (int) $m[1]; continue; }
-    if (preg_match('/^--quality=(\d+)$/', $a, $m))  { $quality = (int) $m[1]; continue; }
-    if (preg_match('/^--limit=(\d+)$/', $a, $m))    { $limit   = (int) $m[1]; continue; }
-    if (preg_match('/^--mod-crop=(.+)$/', $a, $m))  { $modCrop = $m[1]; continue; }
+    if ($a === '--skip-dimensions')   { $skipDim = true; continue; }
+    if (preg_match('/^--density=(\d+)$/', $a, $m))    { $density = (int) $m[1]; continue; }
+    if (preg_match('/^--quality=(\d+)$/', $a, $m))    { $quality = (int) $m[1]; continue; }
+    if (preg_match('/^--limit=(\d+)$/', $a, $m))      { $limit   = (int) $m[1]; continue; }
+    if (preg_match('/^--mod-crop=(.+)$/', $a, $m))    { $modCrop = $m[1]; continue; }
+    if (preg_match('/^--dim-crop=(.+)$/', $a, $m))    { $dimCrop = $m[1]; continue; }
+    if (preg_match('/^--pdf-dir=(.+)$/', $a, $m))     { $pdfDir  = rtrim($m[1], '/'); continue; }
+    if (preg_match('/^--sku-prefix=(.+)$/', $a, $m))  { $skuFilter = '^' . $m[1]; continue; }
     if ($pdfPath === null) { $pdfPath = $a; }
 }
-if ($pdfPath === null || !file_exists($pdfPath)) {
-    fwrite(STDERR, "Uso: php scripts/extract_pdf_images.php <file.pdf> [flags]\n");
-    fwrite(STDERR, "Flags: --density=N --quality=N --limit=N --force --skip-hero --skip-modulation --mod-crop=WxH+X+Y\n");
+
+if ($pdfPath === null && $pdfDir === null) {
+    fwrite(STDERR, "Uso:\n");
+    fwrite(STDERR, "  php scripts/extract_pdf_images.php <file.pdf> [flags]\n");
+    fwrite(STDERR, "  php scripts/extract_pdf_images.php --pdf-dir=/tmp/clouds [flags]\n");
+    fwrite(STDERR, "Flags: --density=N --quality=N --limit=N --force\n");
+    fwrite(STDERR, "       --skip-hero --skip-modulation --skip-dimensions\n");
+    fwrite(STDERR, "       --mod-crop=WxH+X+Y --dim-crop=WxH+X+Y\n");
+    fwrite(STDERR, "       --sku-prefix=N (processa só produtos com prefixo)\n");
     exit(1);
 }
 
-/* ------------------------- ImageMagick ------------------------- */
+/* ---------- ImageMagick ---------- */
 
 exec('which magick 2>/dev/null', $out, $rc);
 $magickBin = ($rc === 0 && !empty($out)) ? trim($out[0]) : 'magick';
@@ -85,32 +92,51 @@ if ($rc !== 0) {
 }
 fwrite(STDOUT, "ImageMagick: " . ($verOut[0] ?? 'unknown') . "\n");
 
-/* ------------------------- Setup ------------------------- */
-
 $uploadDir = BASE_PATH . '/public/uploads/products';
 if (!is_dir($uploadDir)) mkdir($uploadDir, 0775, true);
 
-$stmt = $pdo->query(
-    "SELECT p.id, p.slug, p.name, s.value AS page
+/* ---------- Buscar produtos com hero_page ---------- */
+
+$where = "1=1";
+$params = [];
+if ($skuFilter !== null) {
+    $where .= " AND p.sku REGEXP :sku";
+    $params['sku'] = $skuFilter;
+}
+$stmt = $pdo->prepare(
+    "SELECT p.id, p.slug, p.name, p.sku,
+            s_hp.value AS hero_page,
+            s_mod.value AS has_modulation,
+            s_pdf.value AS pdf_source
        FROM products p
-       JOIN settings s ON s.`key` = CONCAT('_baffles_hero_page_', p.id)
-      WHERE p.sku REGEXP '^B[A-Z]-'
-   ORDER BY CAST(s.value AS UNSIGNED) ASC"
+       JOIN settings s_hp  ON s_hp.`key`  = CONCAT('_baffles_hero_page_', p.id)
+  LEFT JOIN settings s_mod ON s_mod.`key` = CONCAT('_has_modulation_', p.id)
+  LEFT JOIN settings s_pdf ON s_pdf.`key` = CONCAT('_pdf_source_', p.id)
+      WHERE {$where}
+   ORDER BY p.id ASC"
 );
+$stmt->execute($params);
 $products = $stmt->fetchAll();
 fwrite(STDOUT, "Produtos a processar: " . count($products) . "\n\n");
 
-/* ------------------------- Helpers ------------------------- */
+/* ---------- Helpers ---------- */
 
-/**
- * Renderiza uma página inteira do PDF como JPG (com extent fill-cover).
- * Usa filter Lanczos pra downsizing nítido e unsharp para detalhes.
- */
+function resolvePdf(?string $singlePath, ?string $dir, ?string $pdfSource): ?string
+{
+    if ($singlePath !== null) return $singlePath;
+    if ($dir !== null && $pdfSource !== null) {
+        // pdf_source pode estar com extensão (.txt do extract original) ou sem
+        $base = preg_replace('/\.(txt|pdf)$/i', '', $pdfSource);
+        foreach ([$base . '.pdf', $pdfSource] as $candidate) {
+            $full = $dir . '/' . $candidate;
+            if (is_file($full)) return $full;
+        }
+    }
+    return null;
+}
+
 function renderHero(string $magickBin, string $pdfPath, int $pageIdx, int $density, int $quality, int $w, int $h, string $outFile): bool
 {
-    // -define jpeg:dct-method=float — DCT mais preciso (qualidade visual melhor)
-    // -unsharp mais agressivo (radius 0, sigma 0.8, amount 0.8, threshold 0.005)
-    // -filter Mitchell — bom para downscale com nitidez (era Lanczos)
     $cmd = sprintf(
         '%s -density %d %s[%d] ' .
         '-background white -alpha remove -alpha off ' .
@@ -124,20 +150,15 @@ function renderHero(string $magickBin, string $pdfPath, int $pageIdx, int $densi
         $w, $h, $w, $h,
         $quality, escapeshellarg($outFile)
     );
-    exec($cmd, $output, $rc);
+    exec($cmd, $_, $rc);
     return $rc === 0 && file_exists($outFile) && filesize($outFile) > 1000;
 }
 
 /**
- * Renderiza uma região específica de uma página (crop).
- * $cropSpec: formato "WxH+X+Y" — pode usar % nas dimensões.
- *
- * Implementação:
- *   1. Renderiza página completa
- *   2. Pega dimensões reais via identify
- *   3. Computa crop em PIXELS (não usa % do magick — buggy em offsets Y)
+ * Renderiza crop com coordenadas calculadas em pixels reais.
+ * Retorna true se a imagem gerada tem conteúdo (não é só branco).
  */
-function renderModulation(string $magickBin, string $pdfPath, int $pageIdx, int $density, string $cropSpec, string $outFile): bool
+function renderCrop(string $magickBin, string $pdfPath, int $pageIdx, int $density, string $cropSpec, string $outFile, int $minDarkPixels = 1000): bool
 {
     $tmpPage = $outFile . '.fullpage.png';
     $cmd1 = sprintf(
@@ -148,7 +169,6 @@ function renderModulation(string $magickBin, string $pdfPath, int $pageIdx, int 
     exec($cmd1, $_, $rc1);
     if ($rc1 !== 0 || !file_exists($tmpPage)) return false;
 
-    // Identifica dimensões reais da página renderizada (via PHP getimagesize)
     $info = @getimagesize($tmpPage);
     if (!$info || empty($info[0]) || empty($info[1])) {
         @unlink($tmpPage);
@@ -156,7 +176,6 @@ function renderModulation(string $magickBin, string $pdfPath, int $pageIdx, int 
     }
     [$pageW, $pageH] = [(int) $info[0], (int) $info[1]];
 
-    // Parseia $cropSpec: WxH+X+Y, com possíveis %
     if (!preg_match('/^(\d+%?)x(\d+%?)\+(\d+%?)\+(\d+%?)$/', $cropSpec, $m)) {
         @unlink($tmpPage);
         return false;
@@ -179,77 +198,118 @@ function renderModulation(string $magickBin, string $pdfPath, int $pageIdx, int 
         escapeshellcmd($magickBin), escapeshellarg($tmpPage),
         escapeshellarg($pixelCrop), escapeshellarg($outFile)
     );
-    exec($cmd2, $output2, $rc2);
+    exec($cmd2, $_, $rc2);
     @unlink($tmpPage);
+    if ($rc2 !== 0 || !file_exists($outFile)) return false;
 
-    return $rc2 === 0 && file_exists($outFile) && filesize($outFile) > 500;
+    // Verifica se tem conteúdo "real" (não é só branco) — usa stddev como proxy
+    $statCmd = sprintf('%s identify -format "%%[standard-deviation]" %s 2>&1', escapeshellcmd($magickBin), escapeshellarg($outFile));
+    exec($statCmd, $statOut, $rcStat);
+    if ($rcStat === 0 && !empty($statOut)) {
+        $stddev = (float) trim($statOut[0]);
+        // Branco puro tem stddev ~0. Conteúdo real >= 1000 normalmente.
+        if ($stddev < 800) {
+            @unlink($outFile);
+            return false;
+        }
+    }
+    return true;
 }
 
-/* ------------------------- Loop ------------------------- */
+/* ---------- Loop ---------- */
 
 $processed = 0;
-$heroDone = 0;
-$modDone = 0;
+$heroDone = 0; $modDone = 0; $dimDone = 0;
+$heroSkip = 0; $modSkip = 0; $dimSkip = 0;
 
 foreach ($products as $p) {
     if ($limit > 0 && $processed >= $limit) break;
 
-    $page      = (int) $p['page'];
+    $page      = (int) $p['hero_page'];
     $slug      = $p['slug'];
     $productId = (int) $p['id'];
+    $hasMod    = ($p['has_modulation'] === null) ? 1 : (int) $p['has_modulation'];
+
+    $thisPdf = resolvePdf($pdfPath, $pdfDir, $p['pdf_source']);
+    if ($thisPdf === null) {
+        fwrite(STDERR, "❌ PDF não encontrado para {$slug} (source={$p['pdf_source']})\n");
+        continue;
+    }
 
     // ---- HERO ----
     if (!$skipHero) {
         $heroFile = $uploadDir . '/' . $slug . '.jpg';
         if (file_exists($heroFile) && !$force) {
-            fwrite(STDOUT, "· hero existe:        {$slug}.jpg\n");
+            $heroSkip++;
         } else {
             $tmpHero = $heroFile . '.tmp.jpg';
-            if (renderHero($magickBin, $pdfPath, $page - 1, $density, $quality, $heroW, $heroH, $tmpHero)) {
+            if (renderHero($magickBin, $thisPdf, $page - 1, $density, $quality, $heroW, $heroH, $tmpHero)) {
                 rename($tmpHero, $heroFile);
-                $heroBase = basename($heroFile);
+                $base = basename($heroFile);
                 $pdo->prepare("UPDATE products SET hero_image_path = ? WHERE id = ?")
-                    ->execute([$heroBase, $productId]);
+                    ->execute([$base, $productId]);
                 $check = $pdo->prepare("SELECT id FROM product_images WHERE product_id = ? AND is_main = 1 LIMIT 1");
                 $check->execute([$productId]);
                 if (!$check->fetch()) {
-                    $pdo->prepare(
-                        "INSERT INTO product_images (product_id, file_path, alt_text, is_main, sort_order)
-                         VALUES (?, ?, ?, 1, 0)"
-                    )->execute([$productId, $heroBase, $p['name']]);
+                    $pdo->prepare("INSERT INTO product_images (product_id, file_path, alt_text, is_main, sort_order) VALUES (?, ?, ?, 1, 0)")
+                        ->execute([$productId, $base, $p['name']]);
                 } else {
-                    $pdo->prepare(
-                        "UPDATE product_images SET file_path = ?, alt_text = ?
-                          WHERE product_id = ? AND is_main = 1 LIMIT 1"
-                    )->execute([$heroBase, $p['name'], $productId]);
+                    $pdo->prepare("UPDATE product_images SET file_path = ?, alt_text = ? WHERE product_id = ? AND is_main = 1 LIMIT 1")
+                        ->execute([$base, $p['name'], $productId]);
                 }
-                fwrite(STDOUT, "✓ hero renderizado:  {$slug}.jpg (" . round(filesize($heroFile) / 1024) . " KB)\n");
+                fwrite(STDOUT, "✓ hero       {$slug}.jpg (" . round(filesize($heroFile) / 1024) . " KB)\n");
                 $heroDone++;
             } else {
-                fwrite(STDERR, "❌ hero falhou:       {$slug} (page {$page})\n");
+                fwrite(STDERR, "❌ hero falhou: {$slug} (page {$page})\n");
                 @unlink($tmpHero);
+            }
+        }
+    }
+
+    // ---- DIMENSIONS ----
+    if (!$skipDim) {
+        $dimFile = $uploadDir . '/' . $slug . '-dimensions.png';
+        if (file_exists($dimFile) && !$force) {
+            $dimSkip++;
+        } else {
+            $specsPage = $page + 1;
+            $tmp = $dimFile . '.tmp.png';
+            if (renderCrop($magickBin, $thisPdf, $specsPage - 1, $density, $dimCrop, $tmp)) {
+                rename($tmp, $dimFile);
+                $base = basename($dimFile);
+                $pdo->prepare("UPDATE products SET dimensions_image_path = ? WHERE id = ?")
+                    ->execute([$base, $productId]);
+                fwrite(STDOUT, "✓ dimensões {$slug}-dimensions.png (" . round(filesize($dimFile) / 1024) . " KB)\n");
+                $dimDone++;
+            } else {
+                @unlink($tmp);
+                // OK silencioso — alguns produtos podem não ter desenho técnico
             }
         }
     }
 
     // ---- MODULATION ----
     if (!$skipMod) {
-        $modFile = $uploadDir . '/' . $slug . '-modulation.png';
-        if (file_exists($modFile) && !$force) {
-            fwrite(STDOUT, "· mod existe:         {$slug}-modulation.png\n");
+        if ($hasMod !== 1) {
+            $modSkip++; // marcado como sem modulação no PDF
         } else {
-            $modPage = $page + 1; // página de specs (par)
-            $tmpMod  = $modFile . '.tmp.png';
-            if (renderModulation($magickBin, $pdfPath, $modPage - 1, $density, $modCrop, $tmpMod)) {
-                rename($tmpMod, $modFile);
-                $modBase = basename($modFile);
-                $pdo->prepare("UPDATE products SET modulation_image_path = ? WHERE id = ?")
-                    ->execute([$modBase, $productId]);
-                fwrite(STDOUT, "✓ modulação:         {$modBase} (" . round(filesize($modFile) / 1024) . " KB)\n");
-                $modDone++;
+            $modFile = $uploadDir . '/' . $slug . '-modulation.png';
+            if (file_exists($modFile) && !$force) {
+                $modSkip++;
             } else {
-                fwrite(STDERR, "❌ modulação falhou:  {$slug} (page {$modPage})\n");
-                @unlink($tmpMod);
+                $specsPage = $page + 1;
+                $tmp = $modFile . '.tmp.png';
+                if (renderCrop($magickBin, $thisPdf, $specsPage - 1, $density, $modCrop, $tmp)) {
+                    rename($tmp, $modFile);
+                    $base = basename($modFile);
+                    $pdo->prepare("UPDATE products SET modulation_image_path = ? WHERE id = ?")
+                        ->execute([$base, $productId]);
+                    fwrite(STDOUT, "✓ modulação {$base} (" . round(filesize($modFile) / 1024) . " KB)\n");
+                    $modDone++;
+                } else {
+                    @unlink($tmp);
+                    fwrite(STDERR, "❌ modulação falhou: {$slug}\n");
+                }
             }
         }
     }
@@ -257,4 +317,7 @@ foreach ($products as $p) {
     $processed++;
 }
 
-fwrite(STDOUT, "\n✅ Concluído. Hero: {$heroDone} · Modulação: {$modDone}\n");
+fwrite(STDOUT, "\n✅ Concluído.\n");
+fwrite(STDOUT, "   Hero:       feitos {$heroDone}, pulados {$heroSkip}\n");
+fwrite(STDOUT, "   Dimensões:  feitos {$dimDone}\n");
+fwrite(STDOUT, "   Modulação:  feitos {$modDone}, pulados {$modSkip}\n");
