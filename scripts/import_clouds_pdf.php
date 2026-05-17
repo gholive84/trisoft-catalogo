@@ -130,25 +130,28 @@ $normalizeSubtitle = function (string $s): string {
  *
  * Retorna [linha, shape, fullName] ou null.
  */
-$parseTitle = function (string $line): ?array {
-    $line = trim($line);
-    if ($line === '') return null;
+$validLines = ['CLASSIC', 'FORM', 'NESS', 'SOFTFELT'];
+$parseTitle = function (string $rawLine) use ($validLines): ?array {
+    $rawLine = trim($rawLine);
+    if ($rawLine === '') return null;
 
-    // Padrão 1: "CLASSIC CLOUD SHAPE"
-    if (preg_match('/^([A-Z]+)\s+CLOUD\s+([A-Z][A-Z0-9 \/]*)$/u', $line, $m)) {
+    // Padrão 1: "CLASSIC CLOUD SHAPE" (line first)
+    if (preg_match('/^([A-Z]+)\s+CLOUD\s+([A-Z][A-Z0-9 \/]*)$/u', $rawLine, $m)) {
         $line  = strtoupper(trim($m[1]));
         $shape = strtoupper(trim($m[2]));
-        if (isset($lineCategories[$line])) {
+        if (in_array($line, $validLines, true)) {
             return [$line, $shape, "CLOUD {$line} {$shape}"];
         }
     }
     // Padrão 2: "CLOUD LINE SHAPE [NN]" — line vem depois de CLOUD
-    if (preg_match('/^CLOUD\s+([A-Z]+)\s+([A-Z][A-Z0-9 \/]*)$/u', $line, $m)) {
+    if (preg_match('/^CLOUD\s+([A-Z]+)\s+([A-Z][A-Z0-9 \/]*)$/u', $rawLine, $m)) {
         $line  = strtoupper(trim($m[1]));
         $shape = strtoupper(trim($m[2]));
         // Remove "01", "02" no final do shape (apenas Form Fly)
         $shape = preg_replace('/\s+\d+$/', '', $shape);
-        return [$line, $shape, "CLOUD {$line} {$shape}"];
+        if (in_array($line, $validLines, true)) {
+            return [$line, $shape, "CLOUD {$line} {$shape}"];
+        }
     }
     return null;
 };
