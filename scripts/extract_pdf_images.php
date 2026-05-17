@@ -52,7 +52,7 @@ $skipHero = false;
 $skipMod  = false;
 $skipDim  = false;
 $modCrop  = '100%x16%+0%+42%';
-$dimCrop  = '100%x20%+0%+18%'; // entre subtitle e tabela
+$dimCrop  = '100%x30%+0%+12%'; // entre subtitle e tabela (altura ampla pra capturar o desenho inteiro)
 $skuFilter = null;             // ex.: '^N' para nuvem, '^B' para baffle
 
 foreach ($args as $a) {
