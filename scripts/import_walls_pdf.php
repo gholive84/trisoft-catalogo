@@ -146,63 +146,64 @@ $parseSpecsLine = function (string $sl) use ($skuRegex): ?array {
     $code = $m[1];
     $rest = isset($m[2]) ? trim($m[2]) : '';
 
-    // Divide o resto por 2+ espaços (preserva "0,25 m²" inteiro)
+    // Divide o resto por 2+ espaços (preserva "0,25 m²" e "N25 E 10" inteiros)
     $tokens = preg_split('/\s{2,}/', $rest) ?: [];
     $tokens = array_values(array_filter(array_map('trim', $tokens), fn($t) => $t !== ''));
 
-    // Heurística: associa por padrão de valor
-    //   - thickness: inteiro pequeno (2-3 dígitos)
-    //   - a, b, c, d: inteiro 100-9999
-    //   - pieces_per_box / unit: inteiro 1-50
-    //   - coverage_area: número + m²
-    //   - pet_bottles: inteiro
     $row = [
         'code' => $code,
         'thickness' => '', 'a' => '', 'b' => '', 'c' => '', 'd' => '',
         'pieces_per_box' => '', 'coverage_area' => '', 'pet_bottles' => '',
     ];
 
-    // Identifica coverage_area (contém m²) e separa numéricos em ANTES/DEPOIS
+    // Identifica coverage_area (contém m²) — divisor natural da tabela
     $coverageIdx = null;
     foreach ($tokens as $i => $tok) {
         if (preg_match('/m[²2]/u', $tok)) {
             $coverageIdx = $i;
-            $row['coverage_area'] = preg_replace('/\s+m[²2]/u', ' m²', trim($tok));
+            $row['coverage_area'] = preg_replace('/\s*m[²2]\s*/u', ' m²', trim($tok));
             break;
         }
     }
 
-    $numsBefore = [];
-    $numsAfter  = [];
+    // Separa tokens em ANTES e DEPOIS do coverage_area, preservando texto não-numérico
+    $tokensBefore = [];
+    $tokensAfter  = [];
     foreach ($tokens as $i => $tok) {
         if ($i === $coverageIdx) continue;
-        if (!preg_match('/^\d+([.,]\d+)?$/', $tok)) continue;
         if ($coverageIdx === null || $i < $coverageIdx) {
-            $numsBefore[] = $tok;
+            $tokensBefore[] = $tok;
         } else {
-            $numsAfter[] = $tok;
+            $tokensAfter[] = $tok;
         }
     }
 
-    // Antes do coverage: thickness + até 4 dimensões + opcional unit (último valor pequeno)
-    // Depois do coverage: PET bottles
-    if (count($numsBefore) >= 1) $row['thickness'] = (int) $numsBefore[0];
-    $dims = array_slice($numsBefore, 1);
+    // Cast: número puro → int; "1,5" → string; "N25 E 10" → string
+    $cast = function ($v) {
+        $v = trim((string) $v);
+        if ($v === '') return '';
+        if (preg_match('/^\d+$/', $v)) return (int) $v;
+        return $v;
+    };
 
-    // Heurística: se o último num antes do m² for pequeno (1-100) E houver ao menos 2 outros antes dele,
-    // ele provavelmente é Unit (pieces_per_box)
-    if (count($dims) >= 3 && (int) end($dims) <= 100) {
+    // 1º token antes do m² = thickness (pode ser "9" ou "N25 E 10")
+    if (count($tokensBefore) >= 1) $row['thickness'] = $cast($tokensBefore[0]);
+    $dims = array_slice($tokensBefore, 1);
+
+    // Heurística: se o último valor numérico antes do m² for pequeno (<=100) E houver
+    // ao menos 2 outros valores numéricos antes dele, provavelmente é Unit (Peças/cx)
+    if (count($dims) >= 3 && preg_match('/^\d+$/', (string) end($dims)) && (int) end($dims) <= 100) {
         $row['pieces_per_box'] = (int) array_pop($dims);
     }
 
-    // Atribui dimensões em ordem A, B, C, D
+    // Atribui dimensões em ordem A, B, C, D (preserva textuais)
     $dimKeys = ['a', 'b', 'c', 'd'];
     foreach ($dims as $idx => $val) {
-        if (isset($dimKeys[$idx])) $row[$dimKeys[$idx]] = (int) $val;
+        if (isset($dimKeys[$idx])) $row[$dimKeys[$idx]] = $cast($val);
     }
 
-    // Após o m² = PET Bottles
-    if ($numsAfter !== []) $row['pet_bottles'] = (int) $numsAfter[0];
+    // Após o m² = PET Bottles (preserva texto se houver)
+    if ($tokensAfter !== []) $row['pet_bottles'] = $cast($tokensAfter[0]);
 
     return $row;
 };
