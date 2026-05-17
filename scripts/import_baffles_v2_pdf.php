@@ -292,7 +292,7 @@ foreach ($products as $slug => $p) {
     }
 
     // Sub-categoria por família (slug do título)
-    $familySlug = 'paredes-' . slugifyBaffles($p['title']);
+    $familySlug = 'baffles-' . slugifyBaffles($p['title']);
     $familyCatId = ensureCategoryBaffles($pdo, $familySlug, ucwords(strtolower($p['title'])), $bafflesId);
 
     $description = "Baffle acústico Trisoft.\n\n"
