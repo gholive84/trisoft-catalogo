@@ -83,35 +83,47 @@ $initialSelected = $selectedCats ?? [];
                 $renderCategory = function (array $node, int $depth = 0) use (&$renderCategory) {
                     $id = (int) $node['id'];
                     $hasChildren = !empty($node['children']);
+                    $startOpen = false; // todas as categorias começam colapsadas no /produtos
                 ?>
-                    <div>
-                        <label class="relative block cursor-pointer rounded-xl transition-all duration-200 select-none"
-                               :class="selectedCats.includes(<?= $id ?>)
-                                        ? 'bg-brand-ink/[0.06] text-brand-ink'
-                                        : 'text-brand-muted hover:bg-gray-50 hover:text-brand-ink'">
-                            <input type="checkbox" value="<?= $id ?>"
-                                   @change="toggleCat(<?= $id ?>)"
-                                   :checked="selectedCats.includes(<?= $id ?>)"
-                                   class="sr-only peer">
+                    <div <?php if ($hasChildren): ?>x-data="{ open: <?= $startOpen ? 'true' : 'false' ?> }"<?php endif; ?>>
+                        <div class="relative flex items-stretch">
+                            <label class="relative flex-1 block cursor-pointer rounded-xl transition-all duration-200 select-none"
+                                   :class="selectedCats.includes(<?= $id ?>)
+                                            ? 'bg-brand-ink/[0.06] text-brand-ink'
+                                            : 'text-brand-muted hover:bg-gray-50 hover:text-brand-ink'">
+                                <input type="checkbox" value="<?= $id ?>"
+                                       @change="toggleCat(<?= $id ?>)"
+                                       :checked="selectedCats.includes(<?= $id ?>)"
+                                       class="sr-only peer">
 
-                            <!-- Indicador vertical à esquerda quando selecionado -->
-                            <span class="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r bg-brand-ink transition-all duration-200"
-                                  :class="selectedCats.includes(<?= $id ?>) ? 'opacity-100 scale-y-100' : 'opacity-0 scale-y-50'"></span>
+                                <!-- Indicador vertical à esquerda quando selecionado -->
+                                <span class="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r bg-brand-ink transition-all duration-200"
+                                      :class="selectedCats.includes(<?= $id ?>) ? 'opacity-100 scale-y-100' : 'opacity-0 scale-y-50'"></span>
 
-                            <span class="flex items-center justify-between py-2.5 pr-3"
-                                  :style="'padding-left: <?= 14 + ($depth * 14) ?>px'">
-                                <span :class="selectedCats.includes(<?= $id ?>) ? 'font-medium tracking-tight' : ''">
-                                    <?= e($node['name']) ?>
+                                <span class="flex items-center justify-between py-2.5 pr-3"
+                                      :style="'padding-left: <?= 14 + ($depth * 14) ?>px'">
+                                    <span :class="selectedCats.includes(<?= $id ?>) ? 'font-medium tracking-tight' : ''">
+                                        <?= e($node['name']) ?>
+                                    </span>
+                                    <!-- check sutil quando selecionado -->
+                                    <svg x-show="selectedCats.includes(<?= $id ?>)" x-cloak
+                                         class="w-3.5 h-3.5 text-brand-ink ml-2 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                    </svg>
                                 </span>
-                                <!-- check sutil quando selecionado -->
-                                <svg x-show="selectedCats.includes(<?= $id ?>)" x-cloak
-                                     class="w-3.5 h-3.5 text-brand-ink ml-2 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                                </svg>
-                            </span>
-                        </label>
+                            </label>
+                            <?php if ($hasChildren): ?>
+                                <button type="button" @click="open = !open"
+                                        class="ml-1 w-7 shrink-0 rounded-lg text-brand-muted hover:bg-gray-50 flex items-center justify-center"
+                                        :aria-label="open ? 'Recolher' : 'Expandir'">
+                                    <svg :class="open ? 'rotate-90' : ''" class="w-3 h-3 transition-transform" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                </button>
+                            <?php endif; ?>
+                        </div>
                         <?php if ($hasChildren): ?>
-                            <div class="flex flex-col gap-px">
+                            <div x-show="open" x-cloak class="flex flex-col gap-px">
                                 <?php foreach ($node['children'] as $child) $renderCategory($child, $depth + 1); ?>
                             </div>
                         <?php endif; ?>
