@@ -40,8 +40,12 @@ final class OrderController
         $params = [];
         if ($status !== '') { $where .= " AND o.status = :st"; $params['st'] = $status; }
         if ($q !== '') {
-            $where .= " AND (o.order_number LIKE :q OR u.name LIKE :q OR u.email LIKE :q)";
-            $params['q'] = "%{$q}%";
+            // MySQL native prepares exigem placeholder unico por ocorrencia
+            $where .= " AND (o.order_number LIKE :q1 OR u.name LIKE :q2 OR u.email LIKE :q3)";
+            $like = "%{$q}%";
+            $params['q1'] = $like;
+            $params['q2'] = $like;
+            $params['q3'] = $like;
         }
 
         $sql = "SELECT o.*, u.name AS customer_name, u.email AS customer_email

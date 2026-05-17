@@ -46,8 +46,13 @@ final class ProductController
         $where  = "p.deleted_at IS NULL";
         $params = [];
         if ($q !== '') {
-            $where .= " AND (p.name LIKE :q OR p.sku LIKE :q OR p.subtitle LIKE :q)";
-            $params['q'] = "%{$q}%";
+            // MySQL native prepares (EMULATE_PREPARES=false) exigem placeholder
+            // unico por ocorrencia — usamos :qN para nome/sku/subtitle.
+            $where .= " AND (p.name LIKE :q1 OR p.sku LIKE :q2 OR p.subtitle LIKE :q3)";
+            $like = "%{$q}%";
+            $params['q1'] = $like;
+            $params['q2'] = $like;
+            $params['q3'] = $like;
         }
         if ($status === 'active')   $where .= " AND p.is_active = 1";
         if ($status === 'inactive') $where .= " AND p.is_active = 0";

@@ -38,8 +38,12 @@ final class UserController
         $params = [];
         if ($role !== '') { $where .= " AND role = :r"; $params['r'] = $role; }
         if ($q !== '') {
-            $where .= " AND (name LIKE :q OR email LIKE :q OR company_name LIKE :q)";
-            $params['q'] = "%{$q}%";
+            // MySQL native prepares exigem placeholder unico por ocorrencia
+            $where .= " AND (name LIKE :q1 OR email LIKE :q2 OR company_name LIKE :q3)";
+            $like = "%{$q}%";
+            $params['q1'] = $like;
+            $params['q2'] = $like;
+            $params['q3'] = $like;
         }
 
         $countStmt = $this->pdo->prepare("SELECT COUNT(*) FROM users WHERE {$where}");
