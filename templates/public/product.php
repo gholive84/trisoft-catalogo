@@ -147,6 +147,7 @@ $primaryCategory = $categories[0] ?? null;
                             'thickness'      => 'Thickness',
                             'a'              => '"A" (mm)',
                             'b'              => '"B" (mm)',
+                            'c'              => '"C" (mm)',
                             'pieces_per_box' => 'Peças/cx',
                             'coverage_area'  => 'Cobertura',
                             'pet_bottles'    => 'PET Bottles',

@@ -132,80 +132,118 @@ function parseSpecsColumnMajor(string $pageText): array
     $lines = preg_split('/\R/u', $pageText) ?: [];
     $n = count($lines);
 
-    // Localizar linha "Code"
-    $codeIdx = -1;
-    for ($i = 0; $i < $n; $i++) {
-        if (trim($lines[$i]) === 'Code') { $codeIdx = $i; break; }
-    }
-    if ($codeIdx < 0) return [];
+    // Padrão que reconhece o início de cada seção (cabeçalho da coluna).
+    // IMPORTANTE: o regex precisa consumir o cabeçalho COMPLETO (incluindo "(mm)",
+    // "per unit", etc) senão o sufixo vira valor. Aspas curvas no pdftotext viram
+    // "â€œ" e "â€" (mojibake UTF-8 mal interpretado).
+    $headerKeys = [
+        'thickness' => '/^Thickness\s*\(mm\)\s*/i',
+        'a'         => '/^(?:["“]|â€œ)?A(?:["”]|â€)?\s*\(mm\)\s*/u',
+        'b'         => '/^(?:["“]|â€œ)?B(?:["”]|â€)?\s*\(mm\)\s*/u',
+        'c'         => '/^(?:["“]|â€œ)?C(?:["”]|â€)?\s*\(mm\)\s*/u',
+        'unit'      => '/^(?:Unit|Pieces\s+per\s+box)\s*/i',
+        'coverage'  => '/^Coverage\s+Area\s*/i',
+        'pet'       => '/^PET\s+Bottles\s+per\s+unit\s*/i',
+    ];
+    // Padrão de fim de seção (qualquer header ou texto introdutório)
+    $stopPattern = '/^(Thickness\s*\(mm\)|(?:["“]|â€œ)?[ABC](?:["”]|â€)?\s*\(mm\)|Unit\s*$|Pieces\s+per\s+box|Coverage\s+Area|PET\s+Bottles|Code(\s|$)|Colors?:|Prints?:|Solid\s+Colors|High\s+Relief|Upcycling|Covered|Made\s+with|Modulation)/iu';
 
-    // SKUs na próxima linha não vazia
-    $i = $codeIdx + 1;
-    while ($i < $n && trim($lines[$i]) === '') $i++;
-    if ($i >= $n) return [];
-    $skus = preg_split('/\s+/', trim($lines[$i])) ?: [];
-    $skus = array_values(array_filter($skus, fn($s) => preg_match('/^N[A-Z]+-[A-Z]+-\d+-\d+$/', $s)));
+    // Helper: localizar linha que começa com $pattern a partir de $start; retorna ['idx', 'tail']
+    $findSection = function (string $pattern, int $start = 0) use ($lines, $n): ?array {
+        for ($i = $start; $i < $n; $i++) {
+            $line = trim($lines[$i]);
+            if ($line === '') continue;
+            if (preg_match($pattern, $line, $m, PREG_OFFSET_CAPTURE)) {
+                $end = $m[0][1] + strlen($m[0][0]);
+                $tail = trim(substr($line, $end));
+                return ['idx' => $i, 'tail' => $tail];
+            }
+        }
+        return null;
+    };
+
+    // Localizar "Code" (header pode estar standalone ou ter SKUs inline)
+    $codeSec = $findSection('/^Code(\s|$)/i');
+    if (!$codeSec) return [];
+
+    // Coletar SKUs: começa pelo tail da linha "Code", continua até a próxima linha não-SKU
+    $skus = [];
+    $skuRegex = '/^N[A-Z]+-[A-Z]+-\d+-\d+$/';
+    foreach (preg_split('/\s+/', $codeSec['tail']) as $p) {
+        if ($p !== '' && preg_match($skuRegex, $p)) $skus[] = $p;
+    }
+    $k = $codeSec['idx'] + 1;
+    while ($k < $n) {
+        $line = trim($lines[$k]);
+        if ($line === '') { $k++; continue; }
+        if (preg_match($stopPattern, $line)) break;
+        $foundAny = false;
+        foreach (preg_split('/\s+/', $line) as $p) {
+            if ($p !== '' && preg_match($skuRegex, $p)) { $skus[] = $p; $foundAny = true; }
+        }
+        if (!$foundAny) break;
+        $k++;
+    }
     $numSkus = count($skus);
     if ($numSkus === 0) return [];
 
-    // Padrões dos cabeçalhos de coluna (encoding de aspas curvas no PDF varia)
-    $headerPatterns = [
-        'thickness' => '/^Thickness/i',
-        'a'         => '/^["“â€œ]?A["”â€\x9d]?(\s*\(mm\))?\s*$/u',
-        'b'         => '/^["“â€œ]?B["”â€\x9d]?(\s*\(mm\))?\s*$/u',
-        'unit'      => '/^Unit\s*$/i',
-        'pet'       => '/^PET Bottles/i',
-    ];
+    $startSearch = $k;
 
-    // Marcadores de fim de seção (próximo header ou texto de descrição)
-    $stopPattern = '/^(Thickness|["“â€œ]?A["”â€\x9d]?(\s*\(mm\))?\s*$|["“â€œ]?B["”â€\x9d]?(\s*\(mm\))?\s*$|Unit\s*$|PET Bottles|Code\s*$|Colors?:|Prints?:|Solid Colors|High Relief|Upcycling|Covered|Modulation)/iu';
-
+    // Localizar cada seção, sempre depois das SKUs
     $sections = [];
-    for ($j = $codeIdx + 1; $j < $n; $j++) {
-        $line = trim($lines[$j]);
-        if ($line === '') continue;
-        foreach ($headerPatterns as $key => $pat) {
-            if (!isset($sections[$key]) && preg_match($pat, $line)) {
-                $sections[$key] = $j;
-                break;
-            }
-        }
+    foreach ($headerKeys as $key => $pat) {
+        $sec = $findSection($pat, $startSearch);
+        if ($sec) $sections[$key] = $sec;
     }
 
-    $readVals = function (int $startIdx, int $count) use ($lines, $n, $stopPattern): array {
+    // Ler $count valores a partir da linha $startIdx (pulando a própria), aproveitando $tail
+    $readVals = function (int $startIdx, int $count, string $tail) use ($lines, $n, $stopPattern): array {
         $vals = [];
+        $appendTokens = function (string $line) use (&$vals, $count) {
+            foreach (preg_split('/\s+/', $line) as $p) {
+                if ($p === '') continue;
+                $vals[] = ($p === '-') ? '' : $p;
+                if (count($vals) >= $count) return true;
+            }
+            return false;
+        };
+        if ($tail !== '' && $appendTokens($tail)) return array_slice($vals, 0, $count);
+
         $k = $startIdx + 1;
         while (count($vals) < $count && $k < $n) {
             $line = trim($lines[$k]);
             if ($line === '') { $k++; continue; }
             if (preg_match($stopPattern, $line)) break;
-            foreach (preg_split('/\s+/', $line) as $p) {
-                if ($p !== '') $vals[] = $p;
-                if (count($vals) >= $count) break;
-            }
+            if ($appendTokens($line)) break;
             $k++;
         }
         return array_slice($vals, 0, $count);
     };
 
     $cols = [];
-    foreach (['thickness', 'a', 'b', 'unit', 'pet'] as $key) {
-        $cols[$key] = isset($sections[$key]) ? $readVals($sections[$key], $numSkus) : [];
+    foreach (['thickness', 'a', 'b', 'c', 'unit', 'coverage', 'pet'] as $key) {
+        $cols[$key] = isset($sections[$key]) ? $readVals($sections[$key]['idx'], $numSkus, $sections[$key]['tail']) : [];
         while (count($cols[$key]) < $numSkus) $cols[$key][] = '';
     }
 
-    $cast = fn($v) => is_numeric($v) ? (int) $v : (string) $v;
+    // Só incluir colunas opcionais (c, coverage) se houver pelo menos 1 valor não-vazio
+    $hasC        = (bool) array_filter($cols['c'], fn($v) => $v !== '' && $v !== null);
+    $hasCoverage = (bool) array_filter($cols['coverage'], fn($v) => $v !== '' && $v !== null);
+
+    $cast = fn($v) => ($v === '' || $v === null) ? '' : (is_numeric($v) ? (int) $v : (string) $v);
     $specs = [];
     foreach ($skus as $idx => $sku) {
-        $specs[] = [
+        $row = [
             'code'           => $sku,
             'thickness'      => $cast($cols['thickness'][$idx]),
             'a'              => $cast($cols['a'][$idx]),
             'b'              => $cast($cols['b'][$idx]),
-            'pieces_per_box' => $cast($cols['unit'][$idx]),
-            'coverage_area'  => '',
-            'pet_bottles'    => $cast($cols['pet'][$idx]),
         ];
+        if ($hasC) $row['c'] = $cast($cols['c'][$idx]);
+        $row['pieces_per_box'] = $cast($cols['unit'][$idx]);
+        if ($hasCoverage) $row['coverage_area'] = (string) $cols['coverage'][$idx];
+        $row['pet_bottles'] = $cast($cols['pet'][$idx]);
+        $specs[] = $row;
     }
     return $specs;
 }
