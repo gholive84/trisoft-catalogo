@@ -136,7 +136,7 @@ if (!empty($product['specifications'])) {
         <div class="bg-white border border-brand-line rounded-2xl p-6 space-y-3"
              x-data='{
                 rows: <?= $specsJsonInline ?: "[]" ?>,
-                addRow() { this.rows.push({code:"", thickness:"", a:"", b:"", pieces_per_box:"", coverage_area:"", pet_bottles:""}); },
+                addRow() { this.rows.push({code:"", thickness:"", a:"", b:"", c:"", d:"", pieces_per_box:"", coverage_area:"", pet_bottles:""}); },
                 removeRow(i) { this.rows.splice(i, 1); },
                 duplicateRow(i) {
                     const c = JSON.parse(JSON.stringify(this.rows[i]));
@@ -157,11 +157,13 @@ if (!empty($product['specifications'])) {
 
             <div class="space-y-2">
                 <!-- Header (visual) -->
-                <div class="hidden md:grid grid-cols-[1.6fr_0.8fr_0.7fr_0.7fr_0.7fr_1fr_0.7fr_0.3fr] gap-2 px-2 text-[10px] uppercase tracking-widest text-brand-muted font-medium">
+                <div class="hidden md:grid grid-cols-[1.6fr_0.6fr_0.55fr_0.55fr_0.55fr_0.55fr_0.6fr_0.85fr_0.6fr_0.3fr] gap-1.5 px-2 text-[10px] uppercase tracking-widest text-brand-muted font-medium">
                     <div>Code (SKU)</div>
-                    <div>Thickness</div>
-                    <div>"A" (mm)</div>
-                    <div>"B" (mm)</div>
+                    <div>Thick</div>
+                    <div>"A"</div>
+                    <div>"B"</div>
+                    <div>"C"</div>
+                    <div>"D"</div>
                     <div>Pç/cx</div>
                     <div>Cobertura</div>
                     <div>PET</div>
@@ -169,17 +171,23 @@ if (!empty($product['specifications'])) {
                 </div>
 
                 <template x-for="(row, i) in rows" :key="i">
-                    <div class="grid grid-cols-1 md:grid-cols-[1.6fr_0.8fr_0.7fr_0.7fr_0.7fr_1fr_0.7fr_0.3fr] gap-2 items-center bg-gray-50 rounded-xl p-2">
+                    <div class="grid grid-cols-1 md:grid-cols-[1.6fr_0.6fr_0.55fr_0.55fr_0.55fr_0.55fr_0.6fr_0.85fr_0.6fr_0.3fr] gap-1.5 items-center bg-gray-50 rounded-xl p-2">
                         <input type="text" :name="`specifications[${i}][code]`" x-model="row.code"
-                               placeholder="BC-STR-50-0001"
+                               placeholder="RF-FRA-25-0001"
                                class="border border-brand-line rounded-lg px-2.5 py-1.5 font-mono text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
                         <input type="text" :name="`specifications[${i}][thickness]`" x-model="row.thickness"
                                placeholder="50"
                                class="border border-brand-line rounded-lg px-2.5 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
                         <input type="text" :name="`specifications[${i}][a]`" x-model="row.a"
-                               placeholder="200"
+                               placeholder="500"
                                class="border border-brand-line rounded-lg px-2.5 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
                         <input type="text" :name="`specifications[${i}][b]`" x-model="row.b"
+                               placeholder="500"
+                               class="border border-brand-line rounded-lg px-2.5 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
+                        <input type="text" :name="`specifications[${i}][c]`" x-model="row.c"
+                               placeholder="2700"
+                               class="border border-brand-line rounded-lg px-2.5 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
+                        <input type="text" :name="`specifications[${i}][d]`" x-model="row.d"
                                placeholder="1200"
                                class="border border-brand-line rounded-lg px-2.5 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
                         <input type="text" :name="`specifications[${i}][pieces_per_box]`" x-model="row.pieces_per_box"

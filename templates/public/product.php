@@ -148,6 +148,7 @@ $primaryCategory = $categories[0] ?? null;
                             'a'              => '"A" (mm)',
                             'b'              => '"B" (mm)',
                             'c'              => '"C" (mm)',
+                            'd'              => '"D" (mm)',
                             'pieces_per_box' => 'Peças/cx',
                             'coverage_area'  => 'Cobertura',
                             'pet_bottles'    => 'PET Bottles',

@@ -312,6 +312,8 @@ final class ProductController
                     'thickness'      => is_numeric($row['thickness'] ?? null) ? (int) $row['thickness'] : trim((string) ($row['thickness'] ?? '')),
                     'a'              => is_numeric($row['a'] ?? null) ? (int) $row['a'] : trim((string) ($row['a'] ?? '')),
                     'b'              => is_numeric($row['b'] ?? null) ? (int) $row['b'] : trim((string) ($row['b'] ?? '')),
+                    'c'              => is_numeric($row['c'] ?? null) ? (int) $row['c'] : trim((string) ($row['c'] ?? '')),
+                    'd'              => is_numeric($row['d'] ?? null) ? (int) $row['d'] : trim((string) ($row['d'] ?? '')),
                     'pieces_per_box' => is_numeric($row['pieces_per_box'] ?? null) ? (int) $row['pieces_per_box'] : trim((string) ($row['pieces_per_box'] ?? '')),
                     'coverage_area'  => trim((string) ($row['coverage_area'] ?? '')),
                     'pet_bottles'    => is_numeric($row['pet_bottles'] ?? null) ? (int) $row['pet_bottles'] : trim((string) ($row['pet_bottles'] ?? '')),
