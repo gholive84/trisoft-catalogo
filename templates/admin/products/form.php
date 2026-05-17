@@ -217,6 +217,48 @@ if (!empty($product['specifications'])) {
             </div>
         </div>
 
+        <!-- Imagens técnicas (dimensões e modulação) -->
+        <div class="bg-white border border-brand-line rounded-2xl p-6 space-y-5">
+            <div>
+                <h2 class="font-display font-semibold text-brand-ink">Imagens técnicas</h2>
+                <p class="text-xs text-brand-muted mt-1">Diagramas extraídos do PDF. Faça upload para substituir o atual.</p>
+            </div>
+
+            <?php foreach ([
+                ['key' => 'dimensions_image_path', 'label' => 'Diagrama de dimensões',  'hint' => 'PNG/JPG com cotas "A" e "B" — aparece na aba "Dimensões" da página do produto.'],
+                ['key' => 'modulation_image_path', 'label' => 'Sugestões de modulação', 'hint' => 'PNG/JPG com mini-diagramas das modulações — aparece na seção "Modulação".'],
+            ] as $tech): ?>
+                <?php $path = $product[$tech['key']] ?? null; ?>
+                <div class="border border-brand-line rounded-xl p-4 grid grid-cols-1 md:grid-cols-[160px_1fr] gap-4 items-start">
+                    <div class="aspect-square bg-gray-50 rounded-lg overflow-hidden border border-brand-line flex items-center justify-center">
+                        <?php if ($path): ?>
+                            <img src="<?= e(upload_url('products/' . $path)) ?>" alt="<?= e($tech['label']) ?>" class="w-full h-full object-contain">
+                        <?php else: ?>
+                            <span class="text-[10px] text-brand-muted uppercase tracking-widest">Sem imagem</span>
+                        <?php endif; ?>
+                    </div>
+                    <div class="space-y-2">
+                        <div>
+                            <div class="text-sm font-medium text-brand-ink"><?= e($tech['label']) ?></div>
+                            <p class="text-xs text-brand-muted mt-0.5"><?= e($tech['hint']) ?></p>
+                            <?php if ($path): ?>
+                                <div class="text-[10px] text-brand-muted font-mono mt-1.5">Atual: <?= e($path) ?></div>
+                            <?php endif; ?>
+                        </div>
+                        <input type="file" name="<?= e($tech['key']) ?>" accept="image/jpeg,image/png,image/webp"
+                               class="block w-full text-xs file:bg-brand-ink file:text-white file:border-0 file:px-3 file:py-1.5 file:rounded-full file:cursor-pointer file:mr-2 file:font-medium hover:file:bg-black transition">
+                        <?php if ($path): ?>
+                            <label class="flex items-center gap-2 text-xs text-rose-600">
+                                <input type="checkbox" name="<?= e($tech['key']) ?>_remove" value="1"
+                                       class="rounded border-gray-300 text-rose-600 focus:ring-rose-500">
+                                Remover imagem atual (não substituir)
+                            </label>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+
         <!-- Imagens -->
         <div class="bg-white border border-brand-line rounded-2xl p-6 space-y-4">
             <h2 class="font-display font-semibold text-brand-ink">Imagens</h2>

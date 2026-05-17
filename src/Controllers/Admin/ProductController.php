@@ -143,6 +143,7 @@ final class ProductController
             $id = $this->insertProduct($data);
             $this->syncCategories($id, $data['categories']);
             $this->handleUploadedImages($id, $request, $data['name']);
+            $this->handleTechnicalImages($id, $request, $data['name']);
             $this->pdo->commit();
         } catch (\Throwable $e) {
             if ($this->pdo->inTransaction()) $this->pdo->rollBack();
@@ -181,6 +182,7 @@ final class ProductController
             $this->updateProduct($id, $data);
             $this->syncCategories($id, $data['categories']);
             $this->handleUploadedImages($id, $request, $data['name']);
+            $this->handleTechnicalImages($id, $request, $data['name']);
             $this->pdo->commit();
         } catch (\Throwable $e) {
             if ($this->pdo->inTransaction()) $this->pdo->rollBack();
@@ -283,6 +285,8 @@ final class ProductController
             'meta_title' => '',
             'meta_description' => '',
             'hero_image_path' => null,
+            'dimensions_image_path' => null,
+            'modulation_image_path' => null,
         ];
     }
 
@@ -433,6 +437,51 @@ final class ProductController
         $stmt = $this->pdo->prepare("INSERT IGNORE INTO product_categories (product_id, category_id) VALUES (?, ?)");
         foreach ($categoryIds as $cid) {
             $stmt->execute([$productId, $cid]);
+        }
+    }
+
+    /**
+     * Substitui ou remove as imagens técnicas (dimensions/modulation) do produto.
+     * Cada campo tem um upload opcional + checkbox "_remove" para limpar.
+     */
+    private function handleTechnicalImages(int $productId, Request $request, string $productName): void
+    {
+        $fields = [
+            'dimensions_image_path' => 'dim',
+            'modulation_image_path' => 'mod',
+        ];
+
+        foreach ($fields as $column => $suffix) {
+            $remove   = (bool) $request->post($column . '_remove', false);
+            $uploaded = $_FILES[$column] ?? null;
+            $hasUpload = is_array($uploaded) && ($uploaded['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK;
+
+            if (!$remove && !$hasUpload) continue;
+
+            // Recupera o path atual pra excluir o arquivo antigo
+            $stmt = $this->pdo->prepare("SELECT {$column} FROM products WHERE id = ?");
+            $stmt->execute([$productId]);
+            $current = (string) $stmt->fetchColumn();
+
+            $newPath = null;
+            if ($hasUpload) {
+                try {
+                    $newPath = $this->uploads->store($uploaded, 'products', $productName . '-' . $suffix);
+                } catch (\Throwable $e) {
+                    Logger::warning('Falha em upload de imagem técnica', ['col' => $column, 'err' => $e->getMessage()]);
+                    Session::flash('error', "Falha ao salvar imagem técnica ({$column}): " . $e->getMessage());
+                    continue;
+                }
+            }
+
+            // Atualiza no banco
+            $this->pdo->prepare("UPDATE products SET {$column} = ? WHERE id = ?")
+                ->execute([$newPath, $productId]);
+
+            // Apaga o arquivo antigo se foi substituído ou removido
+            if ($current !== '' && $current !== $newPath) {
+                $this->uploads->delete('products/' . $current);
+            }
         }
     }
 
