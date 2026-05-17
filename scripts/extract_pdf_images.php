@@ -240,6 +240,17 @@ foreach ($products as $p) {
     if (!$skipHero) {
         $heroFile = $uploadDir . '/' . $slug . '.jpg';
         if (file_exists($heroFile) && !$force) {
+            // Mesmo pulando a renderizacao, garante que product_images tenha o link
+            // (importante apos --reset que limpou product_images mas deixou JPGs)
+            $base = basename($heroFile);
+            $pdo->prepare("UPDATE products SET hero_image_path = ? WHERE id = ? AND (hero_image_path IS NULL OR hero_image_path != ?)")
+                ->execute([$base, $productId, $base]);
+            $check = $pdo->prepare("SELECT id FROM product_images WHERE product_id = ? AND is_main = 1 LIMIT 1");
+            $check->execute([$productId]);
+            if (!$check->fetch()) {
+                $pdo->prepare("INSERT INTO product_images (product_id, file_path, alt_text, is_main, sort_order) VALUES (?, ?, ?, 1, 0)")
+                    ->execute([$productId, $base, $p['name']]);
+            }
             $heroSkip++;
         } else {
             $tmpHero = $heroFile . '.tmp.jpg';
