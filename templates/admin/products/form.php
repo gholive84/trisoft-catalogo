@@ -24,11 +24,20 @@ if (!empty($product['specifications'])) {
         <?php endif; ?>
     </div>
     <?php if (!$isNew): ?>
-        <form method="post" action="<?= e(url('admin/produtos/' . $product['id'] . '/excluir')) ?>"
-              onsubmit="return confirm('Confirma a exclusão deste produto?');">
-            <?= csrf_field() ?>
-            <button class="text-sm text-rose-600 hover:underline">Excluir produto</button>
-        </form>
+        <div class="flex items-center gap-4">
+            <a href="<?= e(url('produto/' . $product['slug'])) ?>" target="_blank"
+               class="inline-flex items-center gap-1.5 text-sm text-brand-blue hover:underline font-medium">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                </svg>
+                Ver produto
+            </a>
+            <form method="post" action="<?= e(url('admin/produtos/' . $product['id'] . '/excluir')) ?>"
+                  onsubmit="return confirm('Confirma a exclusão deste produto?');">
+                <?= csrf_field() ?>
+                <button class="text-sm text-rose-600 hover:underline">Excluir produto</button>
+            </form>
+        </div>
     <?php endif; ?>
 </div>
 

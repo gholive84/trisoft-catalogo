@@ -49,7 +49,7 @@ $initialSelected = $selectedCats ?? [];
             <div class="relative">
                 <input type="search"
                        x-model="query"
-                       @input.debounce.350ms="refresh()"
+                       @input.debounce.350ms="onSearchInput()"
                        @keydown.enter.prevent="refresh()"
                        placeholder="Nome, SKU..."
                        class="w-full bg-gray-100 border border-transparent rounded-full pl-10 pr-9 py-2.5 text-sm placeholder:text-gray-400 focus:bg-white focus:border-brand-line focus:ring-2 focus:ring-gray-200 transition">
@@ -64,6 +64,10 @@ $initialSelected = $selectedCats ?? [];
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
+            <!-- Dica quando 1 ou 2 chars (ainda nao busca) -->
+            <p x-show="query.length > 0 && query.length < 3" x-cloak class="text-[11px] text-brand-muted mt-1.5 px-1">
+                Digite ao menos 3 caracteres
+            </p>
         </div>
 
         <!-- Categorias -->
@@ -204,6 +208,12 @@ function catalogListing(initial) {
                 this.query = (e.detail && e.detail.query) || '';
                 this.refresh();
             });
+        },
+
+        // Instant search: só dispara com 0 chars (limpa) OU 3+ chars
+        onSearchInput() {
+            const q = (this.query || '').trim();
+            if (q.length === 0 || q.length >= 3) this.refresh();
         },
 
         toggleCat(id) {

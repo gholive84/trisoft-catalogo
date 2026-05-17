@@ -171,10 +171,12 @@ final class ProductController
         $data = $this->extractData($request);
         $v = $this->validate($data, isNew: false);
         if ($v->fails()) {
+            Session::flashInput($data);
             Session::flash('error', $v->firstError() ?? 'Verifique os dados.');
             Response::redirect(url("admin/produtos/{$id}/editar"));
         }
-        if ($data['sku'] !== $product['sku'] && $this->skuExists($data['sku'])) {
+        if ($data['sku'] !== $product['sku'] && $this->skuExists($data['sku'], $id)) {
+            Session::flashInput($data);
             Session::flash('error', 'SKU já existe em outro produto.');
             Response::redirect(url("admin/produtos/{$id}/editar"));
         }

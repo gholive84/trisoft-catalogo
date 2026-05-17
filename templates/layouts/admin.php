@@ -17,6 +17,13 @@
                     <div class="text-[10px] uppercase tracking-widest text-white/50">Painel admin</div>
                 </div>
             </a>
+            <a href="<?= e(url('/')) ?>" target="_blank"
+               class="mt-4 flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white text-xs px-3 py-2 rounded-full transition font-medium">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                </svg>
+                Ver site
+            </a>
         </div>
 
         <nav class="flex flex-col p-3 gap-1 text-sm flex-1 overflow-y-auto">
