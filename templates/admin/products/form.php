@@ -229,7 +229,7 @@ if (!empty($product['specifications'])) {
         <div class="bg-white border border-brand-line rounded-2xl p-6 space-y-5">
             <div>
                 <h2 class="font-display font-semibold text-brand-ink">Imagens técnicas</h2>
-                <p class="text-xs text-brand-muted mt-1">Diagramas extraídos do PDF. Faça upload para substituir o atual.</p>
+                <p class="text-xs text-brand-muted mt-1">Diagramas extraídos do PDF. Faça upload, arraste, ou cole da área de trabalho para substituir.</p>
             </div>
 
             <?php foreach ([
@@ -237,24 +237,54 @@ if (!empty($product['specifications'])) {
                 ['key' => 'modulation_image_path', 'label' => 'Sugestões de modulação', 'hint' => 'PNG/JPG com mini-diagramas das modulações — aparece na seção "Modulação".'],
             ] as $tech): ?>
                 <?php $path = $product[$tech['key']] ?? null; ?>
-                <div class="border border-brand-line rounded-xl p-4 grid grid-cols-1 md:grid-cols-[160px_1fr] gap-4 items-start">
+                <?php $originalUrl = $path ? upload_url('products/' . $path) : ''; ?>
+                <div x-data="techImagePicker('<?= e($originalUrl) ?>')"
+                     class="border border-brand-line rounded-xl p-4 grid grid-cols-1 md:grid-cols-[160px_1fr] gap-4 items-start">
+                    <!-- Preview: imagem atual OU preview do arquivo escolhido OU placeholder -->
                     <div class="aspect-square bg-gray-50 rounded-lg overflow-hidden border border-brand-line flex items-center justify-center">
-                        <?php if ($path): ?>
-                            <img src="<?= e(upload_url('products/' . $path)) ?>" alt="<?= e($tech['label']) ?>" class="w-full h-full object-contain">
-                        <?php else: ?>
+                        <template x-if="previewUrl">
+                            <img :src="previewUrl" :alt="'<?= e($tech['label']) ?>'" class="w-full h-full object-contain">
+                        </template>
+                        <template x-if="!previewUrl">
                             <span class="text-[10px] text-brand-muted uppercase tracking-widest">Sem imagem</span>
-                        <?php endif; ?>
+                        </template>
                     </div>
-                    <div class="space-y-2">
+                    <div class="space-y-2.5">
                         <div>
                             <div class="text-sm font-medium text-brand-ink"><?= e($tech['label']) ?></div>
                             <p class="text-xs text-brand-muted mt-0.5"><?= e($tech['hint']) ?></p>
                             <?php if ($path): ?>
                                 <div class="text-[10px] text-brand-muted font-mono mt-1.5">Atual: <?= e($path) ?></div>
                             <?php endif; ?>
+                            <div x-show="pickedName" x-cloak class="text-[10px] text-brand-blue font-mono mt-1.5">
+                                Novo: <span x-text="pickedName"></span>
+                            </div>
                         </div>
-                        <input type="file" name="<?= e($tech['key']) ?>" accept="image/jpeg,image/png,image/webp"
-                               class="block w-full text-xs file:bg-brand-ink file:text-white file:border-0 file:px-3 file:py-1.5 file:rounded-full file:cursor-pointer file:mr-2 file:font-medium hover:file:bg-black transition">
+
+                        <input x-ref="fileInput" type="file" name="<?= e($tech['key']) ?>"
+                               accept="image/jpeg,image/png,image/webp"
+                               @change="onPick($event)" class="hidden">
+
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" @click="$refs.fileInput.click()"
+                                    class="inline-flex items-center gap-1.5 bg-brand-ink text-white text-xs px-3 py-1.5 rounded-full hover:bg-black transition font-medium">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+                                Escolher arquivo
+                            </button>
+                            <button type="button" @click="pasteFromClipboard()"
+                                    :disabled="pasting"
+                                    class="inline-flex items-center gap-1.5 bg-white border border-brand-line text-brand-ink text-xs px-3 py-1.5 rounded-full hover:bg-gray-50 hover:border-brand-blue transition font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                                <span x-text="pasting ? 'Aguardando…' : 'Colar da área de trabalho'"></span>
+                            </button>
+                            <button type="button" x-show="pickedName" x-cloak @click="clearPick()"
+                                    class="inline-flex items-center text-xs text-rose-600 hover:underline px-2">
+                                ✕ desfazer
+                            </button>
+                        </div>
+
+                        <div x-show="pasteError" x-cloak class="text-[11px] text-rose-600" x-text="pasteError"></div>
+
                         <?php if ($path): ?>
                             <label class="flex items-center gap-2 text-xs text-rose-600">
                                 <input type="checkbox" name="<?= e($tech['key']) ?>_remove" value="1"
@@ -266,6 +296,69 @@ if (!empty($product['specifications'])) {
                 </div>
             <?php endforeach; ?>
         </div>
+
+        <script>
+            function techImagePicker(originalUrl) {
+                return {
+                    originalUrl: originalUrl,
+                    previewUrl: originalUrl,
+                    pickedName: '',
+                    pasting: false,
+                    pasteError: '',
+                    onPick(ev) {
+                        const f = ev.target.files?.[0];
+                        if (!f) return;
+                        this.setFile(f);
+                    },
+                    setFile(f) {
+                        this.previewUrl = URL.createObjectURL(f);
+                        this.pickedName = f.name;
+                        this.pasteError = '';
+                    },
+                    clearPick() {
+                        this.$refs.fileInput.value = '';
+                        this.pickedName = '';
+                        this.previewUrl = this.originalUrl;
+                    },
+                    async pasteFromClipboard() {
+                        this.pasteError = '';
+                        if (!navigator.clipboard?.read) {
+                            this.pasteError = 'Seu navegador não suporta colar imagens. Use Ctrl+V em um campo de texto, ou use "Escolher arquivo".';
+                            return;
+                        }
+                        this.pasting = true;
+                        try {
+                            const items = await navigator.clipboard.read();
+                            for (const item of items) {
+                                for (const type of item.types) {
+                                    if (type.startsWith('image/')) {
+                                        const blob = await item.getType(type);
+                                        const ext = type.split('/')[1] || 'png';
+                                        const ts = new Date().toISOString().replace(/[:.]/g, '-');
+                                        const file = new File([blob], `paste-${ts}.${ext}`, { type });
+                                        // Sincroniza com o input file via DataTransfer
+                                        const dt = new DataTransfer();
+                                        dt.items.add(file);
+                                        this.$refs.fileInput.files = dt.files;
+                                        this.setFile(file);
+                                        return;
+                                    }
+                                }
+                            }
+                            this.pasteError = 'Nenhuma imagem encontrada na área de transferência. Copie uma imagem primeiro (Print Screen, captura, etc).';
+                        } catch (err) {
+                            if (err.name === 'NotAllowedError') {
+                                this.pasteError = 'Permissão de acesso à área de transferência negada. Habilite no navegador.';
+                            } else {
+                                this.pasteError = 'Erro ao colar: ' + err.message;
+                            }
+                        } finally {
+                            this.pasting = false;
+                        }
+                    },
+                };
+            }
+        </script>
 
         <!-- Imagens -->
         <div class="bg-white border border-brand-line rounded-2xl p-6 space-y-4">
@@ -303,115 +396,13 @@ if (!empty($product['specifications'])) {
                 </div>
             <?php endif; ?>
 
-            <div x-data="imagePaste()" x-init="init()" class="space-y-3">
-                <label class="block text-xs uppercase tracking-widest text-brand-muted font-medium">Adicionar imagens</label>
-
-                <!-- Drop zone com paste/file picker -->
-                <div @click="$refs.fileInput.click()"
-                     @paste.window="onPaste($event)"
-                     @dragover.prevent="dragOver = true"
-                     @dragleave.prevent="dragOver = false"
-                     @drop.prevent="onDrop($event)"
-                     :class="dragOver ? 'border-brand-blue bg-brand-blue/5' : 'border-brand-line hover:border-brand-blue/50'"
-                     class="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition">
-                    <svg class="w-8 h-8 mx-auto text-brand-muted mb-2" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
-                    </svg>
-                    <div class="text-sm text-brand-ink font-medium">Clique, arraste, ou <kbd class="px-1.5 py-0.5 bg-gray-100 rounded text-xs font-mono">Ctrl+V</kbd> para colar da área de trabalho</div>
-                    <div class="text-xs text-brand-muted mt-1">JPG, PNG, WebP ou GIF — máx <?= round(((int) (\App\Core\Config::get('UPLOAD_MAX_BYTES', 8388608))) / 1048576, 1) ?> MB por arquivo. Múltiplas imagens permitidas.</div>
-                </div>
-
-                <!-- Input nativo (escondido, mas o name=images[] funciona no submit do form) -->
-                <input x-ref="fileInput" type="file" name="images[]" multiple
-                       accept="image/jpeg,image/png,image/webp,image/gif"
-                       @change="onFilesPicked($event)"
-                       class="hidden">
-
-                <!-- Preview das imagens a serem enviadas -->
-                <template x-if="previews.length > 0">
-                    <div class="grid grid-cols-3 md:grid-cols-5 gap-2">
-                        <template x-for="(p, i) in previews" :key="i">
-                            <div class="relative group">
-                                <div class="aspect-square bg-gray-100 rounded-lg overflow-hidden border border-brand-line">
-                                    <img :src="p.url" :alt="p.name" class="w-full h-full object-cover">
-                                </div>
-                                <button type="button" @click="remove(i)"
-                                        class="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-rose-600 text-white opacity-0 group-hover:opacity-100 transition flex items-center justify-center hover:bg-rose-700 shadow-md">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                                </button>
-                                <div class="text-[10px] text-brand-muted mt-1 truncate" x-text="p.name"></div>
-                            </div>
-                        </template>
-                    </div>
-                </template>
+            <div>
+                <label class="block text-xs uppercase tracking-widest text-brand-muted font-medium mb-2">Adicionar imagens (múltiplas)</label>
+                <input type="file" name="images[]" multiple accept="image/jpeg,image/png,image/webp,image/gif"
+                       class="w-full text-sm file:bg-brand-ink file:text-white file:border-0 file:px-4 file:py-2 file:rounded-full file:cursor-pointer file:mr-3 file:font-medium hover:file:bg-black transition">
+                <p class="text-xs text-brand-muted mt-2">JPG, PNG, WebP ou GIF — máx <?= round(((int) (\App\Core\Config::get('UPLOAD_MAX_BYTES', 8388608))) / 1048576, 1) ?> MB por arquivo.</p>
             </div>
         </div>
-
-        <script>
-            function imagePaste() {
-                return {
-                    dragOver: false,
-                    previews: [],
-                    init() {
-                        // Atualiza FileList do input apos cada modificacao
-                        this.$watch('previews', () => this.syncFileInput());
-                    },
-                    onPaste(ev) {
-                        // Só processa paste se o foco estiver em algum elemento dentro do form de produto
-                        const ae = document.activeElement;
-                        if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA') && ae.type !== 'file') return;
-                        const items = ev.clipboardData?.items;
-                        if (!items) return;
-                        const files = [];
-                        for (const it of items) {
-                            if (it.kind === 'file' && it.type.startsWith('image/')) {
-                                const f = it.getAsFile();
-                                if (f) files.push(this.renameIfNeeded(f));
-                            }
-                        }
-                        if (files.length) {
-                            ev.preventDefault();
-                            this.addFiles(files);
-                        }
-                    },
-                    onFilesPicked(ev) {
-                        const fs = Array.from(ev.target.files || []);
-                        // Adiciona aos previews mas mantém os anteriores
-                        this.addFiles(fs);
-                        // Limpa o input para que mudancas subsequentes disparem o evento
-                        ev.target.value = '';
-                    },
-                    onDrop(ev) {
-                        this.dragOver = false;
-                        const fs = Array.from(ev.dataTransfer?.files || []).filter(f => f.type.startsWith('image/'));
-                        if (fs.length) this.addFiles(fs);
-                    },
-                    addFiles(files) {
-                        for (const f of files) {
-                            this.previews.push({ file: f, name: f.name, url: URL.createObjectURL(f) });
-                        }
-                    },
-                    remove(i) {
-                        URL.revokeObjectURL(this.previews[i].url);
-                        this.previews.splice(i, 1);
-                    },
-                    renameIfNeeded(file) {
-                        // Paste do clipboard vem como "image.png" — adiciona timestamp para diferenciar
-                        if (file.name === 'image.png' || file.name === '') {
-                            const ts = new Date().toISOString().replace(/[:.]/g, '-');
-                            return new File([file], `paste-${ts}.png`, { type: file.type });
-                        }
-                        return file;
-                    },
-                    syncFileInput() {
-                        // Constroi um novo DataTransfer com todos os files do preview
-                        const dt = new DataTransfer();
-                        for (const p of this.previews) dt.items.add(p.file);
-                        this.$refs.fileInput.files = dt.files;
-                    },
-                };
-            }
-        </script>
 
         <!-- SEO -->
         <div class="bg-white border border-brand-line rounded-2xl p-6 space-y-4">
