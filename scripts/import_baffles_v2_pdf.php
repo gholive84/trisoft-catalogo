@@ -235,9 +235,15 @@ foreach ($files as $file) {
         // Página de hero NÃO tem "Code"/"Thickness"
         if (stripos($text, 'Code') !== false && stripos($text, 'Thickness') !== false) continue;
 
-        $title = $first;
-        $subtitle = $normalizeSubtitle($second);
-        $name = $title . ' - ' . $subtitle;
+        $title = trim(preg_replace('/\s+/u', ' ', $first) ?? $first);
+
+        if (preg_match('/^\d+$/', trim($second))) {
+            $subtitle = '';
+            $name = $title;
+        } else {
+            $subtitle = $normalizeSubtitle($second);
+            $name = $title . ' - ' . $subtitle;
+        }
         $slug = slugifyBaffles($name);
 
         // Specs vêm na página seguinte
