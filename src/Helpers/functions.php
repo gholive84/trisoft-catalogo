@@ -13,6 +13,22 @@ use App\Core\Config;
 use App\Core\Csrf;
 use App\Core\Session;
 
+if (!function_exists('category_contains_active')) {
+    /**
+     * Verifica se um nó da árvore de categorias ou qualquer descendente tem slug == $activeSlug.
+     * Usado pelo sidebar do site para decidir se um pai começa expandido.
+     */
+    function category_contains_active(array $node, ?string $activeSlug): bool
+    {
+        if ($activeSlug === null || $activeSlug === '') return false;
+        if (($node['slug'] ?? null) === $activeSlug) return true;
+        foreach (($node['children'] ?? []) as $child) {
+            if (category_contains_active($child, $activeSlug)) return true;
+        }
+        return false;
+    }
+}
+
 if (!function_exists('e')) {
     /**
      * Escape HTML seguro. Use SEMPRE em saída para o navegador.

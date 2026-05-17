@@ -39,7 +39,7 @@ $query          = $query ?? '';
                 $hasChildren = !empty($node['children']);
                 $href = url('categoria/' . $node['slug']);
             ?>
-                <div x-data="{ open: <?= $hasChildren && !$isActive ? 'false' : 'true' ?> }">
+                <div x-data="{ open: <?= ($hasChildren && category_contains_active($node, $activeCategory)) ? 'true' : 'false' ?> }">
                     <div class="flex items-center">
                         <a href="<?= e($href) ?>"
                            style="padding-left: <?= 12 + ($depth * 16) ?>px"
