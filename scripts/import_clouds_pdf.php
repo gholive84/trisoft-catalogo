@@ -16,15 +16,14 @@ declare(strict_types=1);
  *   - Sub-cats por linha (Classic/Form/Ness/Softfelt) e por shape
  *   - Nenhum PDF tem "Modulation suggestions" — marca _has_modulation=0
  *
- * Aceita TANTO um único arquivo de texto extraído quanto múltiplos arquivos
- * (passando um diretório ou múltiplos arquivos separados por espaço).
+ * IMPORTANTE: o texto deve ser extraído SEM `-layout` (formato column-major
+ * onde valores ficam em linhas separadas dos cabeçalhos). O parser de specs
+ * column-major é mais confiável para as tabelas da NUVEM que misturam dimensões
+ * 500x500 e 1200x1200 no mesmo SKU pai.
  *
  * Uso:
- *   pdftotext -layout -enc UTF-8 catalogos/SEPARADOS/NUVEM/clouds_*.pdf .../ (1 .txt por PDF)
+ *   pdftotext -enc UTF-8 catalogos/SEPARADOS/NUVEM/clouds_1.pdf /tmp/clouds/clouds_1.txt
  *   php scripts/import_clouds_pdf.php /tmp/clouds/*.txt [--reset]
- *
- *   Ou um único arquivo concatenado:
- *   php scripts/import_clouds_pdf.php /tmp/all_clouds.txt
  */
 
 require __DIR__ . '/../vendor/autoload.php';
@@ -108,12 +107,108 @@ $shapeCategories = [
     'FLY'         => ensureCategory($pdo, 'nuvens-fly',         'Fly',         $nuvensCatId),
 ];
 
-/* ---------- Regex ---------- */
+/* ---------- Spec parser (column-major) ---------- */
 
-// Padrão de linha de SKU: igual ao Baffles mas as colunas podem variar.
-// Coluna 'Coverage area' pode ser 'Unit' (1 ou múltiplo) nas clouds.
-// Aceitamos: Code, [Thickness textual], A, B, [Pieces or Unit], [Coverage opcional], [PET]
-$skuRegex = '/^\s*(N[A-Z]+-[A-Z]+-\d+-\d+)\s+(.+?)$/u';
+/**
+ * Parser column-major (texto extraído com `pdftotext` SEM -layout).
+ * O PDF da NUVEM organiza specs por coluna:
+ *   Code
+ *   NC-XX-NN-0001 NC-XX-NN-0002
+ *   Thickness (mm)
+ *   50 50
+ *   "A" (mm)
+ *   500 1200
+ *   "B" (mm)
+ *   500 1200
+ *   Unit
+ *   1 1
+ *   PET Bottles per unit
+ *   26 148
+ *
+ * Valores podem aparecer todos na mesma linha ou em linhas separadas.
+ */
+function parseSpecsColumnMajor(string $pageText): array
+{
+    $lines = preg_split('/\R/u', $pageText) ?: [];
+    $n = count($lines);
+
+    // Localizar linha "Code"
+    $codeIdx = -1;
+    for ($i = 0; $i < $n; $i++) {
+        if (trim($lines[$i]) === 'Code') { $codeIdx = $i; break; }
+    }
+    if ($codeIdx < 0) return [];
+
+    // SKUs na próxima linha não vazia
+    $i = $codeIdx + 1;
+    while ($i < $n && trim($lines[$i]) === '') $i++;
+    if ($i >= $n) return [];
+    $skus = preg_split('/\s+/', trim($lines[$i])) ?: [];
+    $skus = array_values(array_filter($skus, fn($s) => preg_match('/^N[A-Z]+-[A-Z]+-\d+-\d+$/', $s)));
+    $numSkus = count($skus);
+    if ($numSkus === 0) return [];
+
+    // Padrões dos cabeçalhos de coluna (encoding de aspas curvas no PDF varia)
+    $headerPatterns = [
+        'thickness' => '/^Thickness/i',
+        'a'         => '/^["“â€œ]?A["”â€\x9d]?(\s*\(mm\))?\s*$/u',
+        'b'         => '/^["“â€œ]?B["”â€\x9d]?(\s*\(mm\))?\s*$/u',
+        'unit'      => '/^Unit\s*$/i',
+        'pet'       => '/^PET Bottles/i',
+    ];
+
+    // Marcadores de fim de seção (próximo header ou texto de descrição)
+    $stopPattern = '/^(Thickness|["“â€œ]?A["”â€\x9d]?(\s*\(mm\))?\s*$|["“â€œ]?B["”â€\x9d]?(\s*\(mm\))?\s*$|Unit\s*$|PET Bottles|Code\s*$|Colors?:|Prints?:|Solid Colors|High Relief|Upcycling|Covered|Modulation)/iu';
+
+    $sections = [];
+    for ($j = $codeIdx + 1; $j < $n; $j++) {
+        $line = trim($lines[$j]);
+        if ($line === '') continue;
+        foreach ($headerPatterns as $key => $pat) {
+            if (!isset($sections[$key]) && preg_match($pat, $line)) {
+                $sections[$key] = $j;
+                break;
+            }
+        }
+    }
+
+    $readVals = function (int $startIdx, int $count) use ($lines, $n, $stopPattern): array {
+        $vals = [];
+        $k = $startIdx + 1;
+        while (count($vals) < $count && $k < $n) {
+            $line = trim($lines[$k]);
+            if ($line === '') { $k++; continue; }
+            if (preg_match($stopPattern, $line)) break;
+            foreach (preg_split('/\s+/', $line) as $p) {
+                if ($p !== '') $vals[] = $p;
+                if (count($vals) >= $count) break;
+            }
+            $k++;
+        }
+        return array_slice($vals, 0, $count);
+    };
+
+    $cols = [];
+    foreach (['thickness', 'a', 'b', 'unit', 'pet'] as $key) {
+        $cols[$key] = isset($sections[$key]) ? $readVals($sections[$key], $numSkus) : [];
+        while (count($cols[$key]) < $numSkus) $cols[$key][] = '';
+    }
+
+    $cast = fn($v) => is_numeric($v) ? (int) $v : (string) $v;
+    $specs = [];
+    foreach ($skus as $idx => $sku) {
+        $specs[] = [
+            'code'           => $sku,
+            'thickness'      => $cast($cols['thickness'][$idx]),
+            'a'              => $cast($cols['a'][$idx]),
+            'b'              => $cast($cols['b'][$idx]),
+            'pieces_per_box' => $cast($cols['unit'][$idx]),
+            'coverage_area'  => '',
+            'pet_bottles'    => $cast($cols['pet'][$idx]),
+        ];
+    }
+    return $specs;
+}
 
 $normalizeSubtitle = function (string $s): string {
     $s = trim($s);
@@ -191,27 +286,9 @@ foreach ($files as $file) {
         $name = $baseName . ' - ' . $subtitle;
         $slug = slugifyName($name);
 
-        // Specs ficam na próxima página
+        // Specs ficam na próxima página (formato column-major do pdftotext sem -layout)
         $specsText = $pages[$idx + 1] ?? '';
-        $specsLines = preg_split('/\R/u', $specsText);
-        $specs = [];
-        foreach ($specsLines as $sl) {
-            if (preg_match($skuRegex, $sl, $sm)) {
-                // Tenta extrair os tokens; aceita formato flexível
-                $rest = $sm[2];
-                $tokens = preg_split('/\s{2,}|\s+(?=\d)/u', trim($rest), -1, PREG_SPLIT_NO_EMPTY) ?: [];
-                // Padrão típico: thickness, A, B, [pieces|unit], [coverage], [PET]
-                $specs[] = [
-                    'code'           => $sm[1],
-                    'thickness'      => isset($tokens[0]) ? (is_numeric($tokens[0]) ? (int) $tokens[0] : trim($tokens[0])) : '',
-                    'a'              => isset($tokens[1]) ? (is_numeric($tokens[1]) ? (int) $tokens[1] : trim($tokens[1])) : '',
-                    'b'              => isset($tokens[2]) ? (is_numeric($tokens[2]) ? (int) $tokens[2] : trim($tokens[2])) : '',
-                    'pieces_per_box' => isset($tokens[3]) ? (is_numeric($tokens[3]) ? (int) $tokens[3] : trim($tokens[3])) : '',
-                    'coverage_area'  => isset($tokens[4]) ? trim($tokens[4]) : '',
-                    'pet_bottles'    => isset($tokens[5]) ? (is_numeric($tokens[5]) ? (int) $tokens[5] : trim($tokens[5])) : '',
-                ];
-            }
-        }
+        $specs = parseSpecsColumnMajor($specsText);
         if (empty($specs)) continue;
 
         $hasModulation = (stripos($specsText, 'Modulation suggestions') !== false) ? 1 : 0;
