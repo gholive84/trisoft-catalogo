@@ -271,7 +271,9 @@ $primaryCategory = $categories[0] ?? null;
                     <thead class="border-b border-brand-line">
                         <tr class="text-xs uppercase tracking-widest text-brand-muted bg-gray-50">
                             <?php
-                            // Labels custom (spec_column_labels) sobrescrevem "A", "B", "C", "D".
+                            // Labels custom (spec_column_labels) sobrescrevem "A"-"H".
+                            // Colunas E-H sao "extras" — so aparecem quando label esta definido OU valor presente.
+                            // Colunas A-D usam unit "mm" por padrao (geometria); E-H sem unit (texto livre).
                             $customLabels = $product['spec_column_labels'] ?? null;
                             if (is_string($customLabels)) $customLabels = json_decode($customLabels, true);
                             if (!is_array($customLabels)) $customLabels = [];
@@ -279,6 +281,10 @@ $primaryCategory = $categories[0] ?? null;
                             $labelB = !empty($customLabels['b']) ? $customLabels['b'] : '"B"';
                             $labelC = !empty($customLabels['c']) ? $customLabels['c'] : '"C"';
                             $labelD = !empty($customLabels['d']) ? $customLabels['d'] : '"D"';
+                            $labelE = !empty($customLabels['e']) ? $customLabels['e'] : '"E"';
+                            $labelF = !empty($customLabels['f']) ? $customLabels['f'] : '"F"';
+                            $labelG = !empty($customLabels['g']) ? $customLabels['g'] : '"G"';
+                            $labelH = !empty($customLabels['h']) ? $customLabels['h'] : '"H"';
                             $columns = [
                                 'code'           => ['Code',        null],
                                 'thickness'      => ['Thickness',   'mm'],
@@ -286,6 +292,10 @@ $primaryCategory = $categories[0] ?? null;
                                 'b'              => [$labelB,       'mm'],
                                 'c'              => [$labelC,       'mm'],
                                 'd'              => [$labelD,       'mm'],
+                                'e'              => [$labelE,       null],
+                                'f'              => [$labelF,       null],
+                                'g'              => [$labelG,       null],
+                                'h'              => [$labelH,       null],
                                 'pieces_per_box' => ['Peças/cx',    null],
                                 'coverage_area'  => ['Cobertura',   null],
                                 'pet_bottles'    => ['PET Bottles', null],

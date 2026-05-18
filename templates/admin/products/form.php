@@ -142,11 +142,12 @@ if (!empty($product['specifications'])) {
         $specsJsonInline = htmlspecialchars(json_encode(array_values($specsArray), JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
 
         $specLayout = $product['spec_layout'] ?? 'simple';
-        $simpleEmpty   = '{"code":"","thickness":"","a":"","b":"","c":"","d":"","pieces_per_box":"","coverage_area":"","pet_bottles":""}';
+        $simpleEmpty   = '{"code":"","thickness":"","a":"","b":"","c":"","d":"","e":"","f":"","g":"","h":"","pieces_per_box":"","coverage_area":"","pet_bottles":""}';
         $multiEmpty    = '{"code":"","thickness":"","p1_a":"","p1_b":"","p1_c":"","p1_pieces":"","p1_pet":"","p2_a":"","p2_b":"","p2_c":"","p2_pieces":"","pieces_per_box":"","coverage_area":"","pet_bottles":""}';
         $wallCeilEmpty = '{"code":"","thickness":"","wall_height":"","wall_width":"","wall_length":"","ceiling_height":"","ceiling_width":"","ceiling_length":"","pieces_per_box":"","wall_coverage":"","ceiling_coverage":"","pet_bottles":""}';
 
-        // Labels customizados para colunas A/B/C/D (layout simples).
+        // Labels customizados para colunas A-H (layout simples).
+        // Quando algum label e-h tem valor, o admin exibe as colunas extras E-H.
         $columnLabelsArr = $product['spec_column_labels'] ?? null;
         if (is_string($columnLabelsArr)) $columnLabelsArr = json_decode($columnLabelsArr, true);
         if (!is_array($columnLabelsArr)) $columnLabelsArr = [];
@@ -155,6 +156,10 @@ if (!empty($product['specifications'])) {
             'b' => $columnLabelsArr['b'] ?? '',
             'c' => $columnLabelsArr['c'] ?? '',
             'd' => $columnLabelsArr['d'] ?? '',
+            'e' => $columnLabelsArr['e'] ?? '',
+            'f' => $columnLabelsArr['f'] ?? '',
+            'g' => $columnLabelsArr['g'] ?? '',
+            'h' => $columnLabelsArr['h'] ?? '',
         ], JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
         ?>
         <div class="bg-white border border-brand-line rounded-2xl p-6 space-y-3"
@@ -210,49 +215,70 @@ if (!empty($product['specifications'])) {
 
             <!-- LAYOUT SIMPLES -->
             <div x-show="layout === 'simple'" class="overflow-x-auto -mx-2 px-2">
-            <!-- Rotulos custom das colunas A/B/C/D (opcional) -->
-            <div class="md:min-w-[760px] mb-3 p-3 bg-gray-50 rounded-xl border border-brand-line/50">
-                <div class="flex items-center gap-2 mb-2 text-[11px] text-brand-muted">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                    <span class="font-medium">Rótulos das colunas (opcional)</span>
-                    <span class="text-[10px] italic">— deixe vazio para usar "A", "B", "C", "D" padrão</span>
+            <!-- Rotulos custom das colunas (opcional) - A-D sempre, E-H aparecem se preenchidos -->
+            <div class="mb-3 p-3 bg-gray-50 rounded-xl border border-brand-line/50">
+                <div class="flex items-center justify-between gap-2 mb-2 text-[11px] text-brand-muted">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                        <span class="font-medium">Rótulos das colunas (opcional)</span>
+                        <span class="text-[10px] italic">— vazio = "A", "B", ...</span>
+                    </div>
+                    <button type="button" @click="showExtraLabels = !showExtraLabels"
+                            x-data="{ showExtraLabels: <?= !empty(array_filter([$columnLabelsArr['e'] ?? '', $columnLabelsArr['f'] ?? '', $columnLabelsArr['g'] ?? '', $columnLabelsArr['h'] ?? ''])) ? 'true' : 'false' ?> }"
+                            class="text-[10px] text-brand-blue hover:underline">
+                        <span x-show="!showExtraLabels">+ Mais 4 colunas (E-H)</span>
+                        <span x-show="showExtraLabels" x-cloak>− Esconder E-H</span>
+                    </button>
                 </div>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <div>
-                        <label class="block text-[10px] uppercase tracking-widest text-brand-muted mb-0.5">Coluna A</label>
-                        <input type="text" name="spec_column_labels[a]" x-model="columnLabels.a" placeholder="Diameter" class="w-full border border-brand-line rounded-lg px-2 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
-                    </div>
-                    <div>
-                        <label class="block text-[10px] uppercase tracking-widest text-brand-muted mb-0.5">Coluna B</label>
-                        <input type="text" name="spec_column_labels[b]" x-model="columnLabels.b" placeholder="Length" class="w-full border border-brand-line rounded-lg px-2 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
-                    </div>
-                    <div>
-                        <label class="block text-[10px] uppercase tracking-widest text-brand-muted mb-0.5">Coluna C</label>
-                        <input type="text" name="spec_column_labels[c]" x-model="columnLabels.c" placeholder="Height" class="w-full border border-brand-line rounded-lg px-2 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
-                    </div>
-                    <div>
-                        <label class="block text-[10px] uppercase tracking-widest text-brand-muted mb-0.5">Coluna D</label>
-                        <input type="text" name="spec_column_labels[d]" x-model="columnLabels.d" placeholder="" class="w-full border border-brand-line rounded-lg px-2 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
-                    </div>
+                    <div><label class="block text-[10px] uppercase tracking-widest text-brand-muted mb-0.5">Coluna A</label><input type="text" name="spec_column_labels[a]" x-model="columnLabels.a" placeholder="Diameter" class="w-full border border-brand-line rounded-lg px-2 py-1.5 text-xs"></div>
+                    <div><label class="block text-[10px] uppercase tracking-widest text-brand-muted mb-0.5">Coluna B</label><input type="text" name="spec_column_labels[b]" x-model="columnLabels.b" placeholder="Length" class="w-full border border-brand-line rounded-lg px-2 py-1.5 text-xs"></div>
+                    <div><label class="block text-[10px] uppercase tracking-widest text-brand-muted mb-0.5">Coluna C</label><input type="text" name="spec_column_labels[c]" x-model="columnLabels.c" placeholder="Height" class="w-full border border-brand-line rounded-lg px-2 py-1.5 text-xs"></div>
+                    <div><label class="block text-[10px] uppercase tracking-widest text-brand-muted mb-0.5">Coluna D</label><input type="text" name="spec_column_labels[d]" x-model="columnLabels.d" placeholder="" class="w-full border border-brand-line rounded-lg px-2 py-1.5 text-xs"></div>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2" x-show="columnLabels.e || columnLabels.f || columnLabels.g || columnLabels.h" x-cloak>
+                    <div><label class="block text-[10px] uppercase tracking-widest text-amber-700 mb-0.5">Coluna E (extra)</label><input type="text" name="spec_column_labels[e]" x-model="columnLabels.e" placeholder="Slat thickness" class="w-full border border-amber-200 bg-amber-50/30 rounded-lg px-2 py-1.5 text-xs"></div>
+                    <div><label class="block text-[10px] uppercase tracking-widest text-amber-700 mb-0.5">Coluna F (extra)</label><input type="text" name="spec_column_labels[f]" x-model="columnLabels.f" placeholder="Unfolded dims" class="w-full border border-amber-200 bg-amber-50/30 rounded-lg px-2 py-1.5 text-xs"></div>
+                    <div><label class="block text-[10px] uppercase tracking-widest text-amber-700 mb-0.5">Coluna G (extra)</label><input type="text" name="spec_column_labels[g]" x-model="columnLabels.g" placeholder="Support thickness" class="w-full border border-amber-200 bg-amber-50/30 rounded-lg px-2 py-1.5 text-xs"></div>
+                    <div><label class="block text-[10px] uppercase tracking-widest text-amber-700 mb-0.5">Coluna H (extra)</label><input type="text" name="spec_column_labels[h]" x-model="columnLabels.h" placeholder="Support dims" class="w-full border border-amber-200 bg-amber-50/30 rounded-lg px-2 py-1.5 text-xs"></div>
+                </div>
+                <!-- Botoes pra ativar E-H se nao tiverem label ainda -->
+                <div class="flex gap-2 mt-2" x-show="!(columnLabels.e || columnLabels.f || columnLabels.g || columnLabels.h)">
+                    <button type="button" @click="columnLabels.e = ' '; columnLabels.e = ''" class="text-[10px] text-brand-blue hover:underline" x-show="false">_</button>
                 </div>
             </div>
-            <div class="space-y-2 md:min-w-[760px]">
-                <div class="hidden md:grid grid-cols-[1.4fr_0.5fr_0.45fr_0.45fr_0.45fr_0.45fr_0.5fr_0.75fr_0.5fr_0.35fr] gap-1.5 px-2 text-[10px] uppercase tracking-widest text-brand-muted font-medium">
+            <div class="space-y-2" :class="(columnLabels.e || columnLabels.f || columnLabels.g || columnLabels.h) ? 'md:min-w-[1100px]' : 'md:min-w-[760px]'">
+                <!-- Header dinamico: mostra A-D sempre; E-H se algum label preenchido -->
+                <div class="hidden md:grid gap-1 px-2 text-[10px] uppercase tracking-widest text-brand-muted font-medium"
+                     :style="(columnLabels.e || columnLabels.f || columnLabels.g || columnLabels.h)
+                        ? 'grid-template-columns: 1.4fr 0.5fr 0.4fr 0.4fr 0.4fr 0.4fr 0.4fr 0.4fr 0.4fr 0.4fr 0.45fr 0.7fr 0.45fr 0.35fr'
+                        : 'grid-template-columns: 1.4fr 0.5fr 0.45fr 0.45fr 0.45fr 0.45fr 0.5fr 0.75fr 0.5fr 0.35fr'">
                     <div>Code (SKU)</div><div>Thick</div>
                     <div x-text="columnLabels.a || '&quot;A&quot;'"></div>
                     <div x-text="columnLabels.b || '&quot;B&quot;'"></div>
                     <div x-text="columnLabels.c || '&quot;C&quot;'"></div>
                     <div x-text="columnLabels.d || '&quot;D&quot;'"></div>
+                    <template x-if="columnLabels.e || columnLabels.f || columnLabels.g || columnLabels.h"><div class="text-amber-700" x-text="columnLabels.e || '&quot;E&quot;'"></div></template>
+                    <template x-if="columnLabels.e || columnLabels.f || columnLabels.g || columnLabels.h"><div class="text-amber-700" x-text="columnLabels.f || '&quot;F&quot;'"></div></template>
+                    <template x-if="columnLabels.e || columnLabels.f || columnLabels.g || columnLabels.h"><div class="text-amber-700" x-text="columnLabels.g || '&quot;G&quot;'"></div></template>
+                    <template x-if="columnLabels.e || columnLabels.f || columnLabels.g || columnLabels.h"><div class="text-amber-700" x-text="columnLabels.h || '&quot;H&quot;'"></div></template>
                     <div>Pç/cx</div><div>Cobertura</div><div>PET</div><div></div>
                 </div>
                 <template x-for="(row, i) in rows" :key="'s-' + i">
-                    <div class="grid grid-cols-1 md:grid-cols-[1.4fr_0.5fr_0.45fr_0.45fr_0.45fr_0.45fr_0.5fr_0.75fr_0.5fr_0.35fr] gap-1.5 items-center bg-gray-50 rounded-xl p-2">
+                    <div class="grid grid-cols-1 gap-1 md:gap-1.5 items-center bg-gray-50 rounded-xl p-2"
+                         :style="(columnLabels.e || columnLabels.f || columnLabels.g || columnLabels.h)
+                            ? 'grid-template-columns: 1.4fr 0.5fr 0.4fr 0.4fr 0.4fr 0.4fr 0.4fr 0.4fr 0.4fr 0.4fr 0.45fr 0.7fr 0.45fr 0.35fr'
+                            : 'grid-template-columns: 1.4fr 0.5fr 0.45fr 0.45fr 0.45fr 0.45fr 0.5fr 0.75fr 0.5fr 0.35fr'">
                         <input type="text" :name="`specifications[${i}][code]`" x-model="row.code" placeholder="RF-FRA-25-0001" class="w-full border border-brand-line rounded-lg px-2 py-1.5 font-mono text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
                         <input type="text" :name="`specifications[${i}][thickness]`" x-model="row.thickness" placeholder="50" class="w-full border border-brand-line rounded-lg px-2 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
                         <input type="text" :name="`specifications[${i}][a]`" x-model="row.a" placeholder="500" class="w-full border border-brand-line rounded-lg px-2 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
                         <input type="text" :name="`specifications[${i}][b]`" x-model="row.b" placeholder="500" class="w-full border border-brand-line rounded-lg px-2 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
                         <input type="text" :name="`specifications[${i}][c]`" x-model="row.c" placeholder="2700" class="w-full border border-brand-line rounded-lg px-2 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
                         <input type="text" :name="`specifications[${i}][d]`" x-model="row.d" placeholder="1200" class="w-full border border-brand-line rounded-lg px-2 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
+                        <template x-if="columnLabels.e || columnLabels.f || columnLabels.g || columnLabels.h"><input type="text" :name="`specifications[${i}][e]`" x-model="row.e" placeholder="" class="w-full border border-amber-200 bg-amber-50/30 rounded-lg px-2 py-1.5 text-xs"></template>
+                        <template x-if="columnLabels.e || columnLabels.f || columnLabels.g || columnLabels.h"><input type="text" :name="`specifications[${i}][f]`" x-model="row.f" placeholder="" class="w-full border border-amber-200 bg-amber-50/30 rounded-lg px-2 py-1.5 text-xs"></template>
+                        <template x-if="columnLabels.e || columnLabels.f || columnLabels.g || columnLabels.h"><input type="text" :name="`specifications[${i}][g]`" x-model="row.g" placeholder="" class="w-full border border-amber-200 bg-amber-50/30 rounded-lg px-2 py-1.5 text-xs"></template>
+                        <template x-if="columnLabels.e || columnLabels.f || columnLabels.g || columnLabels.h"><input type="text" :name="`specifications[${i}][h]`" x-model="row.h" placeholder="" class="w-full border border-amber-200 bg-amber-50/30 rounded-lg px-2 py-1.5 text-xs"></template>
                         <input type="text" :name="`specifications[${i}][pieces_per_box]`" x-model="row.pieces_per_box" placeholder="14" class="w-full border border-brand-line rounded-lg px-2 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
                         <input type="text" :name="`specifications[${i}][coverage_area]`" x-model="row.coverage_area" placeholder="3,96 m²" class="w-full border border-brand-line rounded-lg px-2 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
                         <input type="text" :name="`specifications[${i}][pet_bottles]`" x-model="row.pet_bottles" placeholder="27" class="w-full border border-brand-line rounded-lg px-2 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">

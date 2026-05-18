@@ -320,7 +320,9 @@ final class ProductController
 
         $castInt = fn ($v) => is_numeric($v) ? (int) $v : trim((string) ($v ?? ''));
 
-        $simpleKeys = ['code', 'thickness', 'a', 'b', 'c', 'd', 'pieces_per_box', 'coverage_area', 'pet_bottles'];
+        $simpleKeys = ['code', 'thickness',
+                       'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h',
+                       'pieces_per_box', 'coverage_area', 'pet_bottles'];
         $multiKeys  = ['code', 'thickness', 'p1_a', 'p1_b', 'p1_c', 'p1_pieces', 'p1_pet',
                        'p2_a', 'p2_b', 'p2_c', 'p2_pieces', 'pieces_per_box', 'coverage_area', 'pet_bottles'];
         $wallCeilKeys = ['code', 'thickness', 'wall_height', 'wall_width', 'wall_length',
@@ -363,7 +365,7 @@ final class ProductController
         if ($specLayout === 'simple') {
             $rawLabels = (array) $request->post('spec_column_labels', []);
             $labels = [];
-            foreach (['a', 'b', 'c', 'd'] as $k) {
+            foreach (['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] as $k) {
                 $v = trim((string) ($rawLabels[$k] ?? ''));
                 if ($v !== '') $labels[$k] = $v;
             }
