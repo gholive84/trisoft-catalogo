@@ -138,9 +138,71 @@ $primaryCategory = $categories[0] ?? null;
             </div>
         <?php endif; ?>
 
-        <?php $isMultiPiece = ($product['spec_layout'] ?? 'simple') === 'multi_piece'; ?>
+        <?php
+        $specLayoutVal = $product['spec_layout'] ?? 'simple';
+        $isMultiPiece  = $specLayoutVal === 'multi_piece';
+        $isWallCeiling = $specLayoutVal === 'wall_ceiling';
+        ?>
 
-        <?php if ($isMultiPiece): ?>
+        <?php if ($isWallCeiling): ?>
+            <!-- Legenda Parede / Teto -->
+            <div class="flex flex-wrap items-center justify-center gap-4 mb-3 text-xs text-brand-muted">
+                <span class="inline-flex items-center gap-2">
+                    <span class="inline-block w-3 h-3 rounded bg-blue-200 border border-blue-300"></span>
+                    <span class="font-semibold text-blue-700 uppercase tracking-widest text-[11px]">Parede</span>
+                </span>
+                <span class="inline-flex items-center gap-2">
+                    <span class="inline-block w-3 h-3 rounded bg-amber-200 border border-amber-300"></span>
+                    <span class="font-semibold text-amber-700 uppercase tracking-widest text-[11px]">Teto</span>
+                </span>
+                <span class="text-[11px] italic">— produto composto por painéis de parede e teto, vendidos em conjunto.</span>
+            </div>
+            <div class="overflow-x-auto mb-10 border border-brand-line rounded-2xl">
+                <table class="w-full text-xs md:text-sm min-w-[800px]">
+                    <thead class="border-b border-brand-line">
+                        <tr class="text-xs uppercase tracking-widest bg-gray-50">
+                            <th class="px-3 py-3"></th>
+                            <th class="px-3 py-3"></th>
+                            <th colspan="3" class="px-2 py-3 text-center bg-blue-100 text-blue-800 border-l-2 border-r-2 border-blue-300 font-bold text-sm">▸ PAREDE</th>
+                            <th colspan="3" class="px-2 py-3 text-center bg-amber-100 text-amber-800 border-r-2 border-amber-300 font-bold text-sm">▸ TETO</th>
+                            <th colspan="4" class="px-2 py-3 text-center text-brand-muted text-[10px]">Compartilhado</th>
+                        </tr>
+                        <tr class="text-[10px] uppercase tracking-widest text-brand-muted bg-gray-50 border-t border-brand-line">
+                            <th class="px-3 py-2 text-left font-medium">Code</th>
+                            <th class="px-2 py-2 text-left font-medium">Thickness<span class="ml-1 text-[9px] opacity-60 font-normal lowercase">(mm)</span></th>
+                            <th class="px-2 py-2 text-left font-medium bg-blue-50/60 border-l-2 border-blue-200">Altura "A"<span class="ml-1 text-[9px] opacity-60 font-normal lowercase">(mm)</span></th>
+                            <th class="px-2 py-2 text-left font-medium bg-blue-50/60">Largura "B"<span class="ml-1 text-[9px] opacity-60 font-normal lowercase">(mm)</span></th>
+                            <th class="px-2 py-2 text-left font-medium bg-blue-50/60 border-r-2 border-blue-200">Compr.<span class="ml-1 text-[9px] opacity-60 font-normal lowercase">(mm)</span></th>
+                            <th class="px-2 py-2 text-left font-medium bg-amber-50/60">Altura "C"<span class="ml-1 text-[9px] opacity-60 font-normal lowercase">(mm)</span></th>
+                            <th class="px-2 py-2 text-left font-medium bg-amber-50/60">Largura "D"<span class="ml-1 text-[9px] opacity-60 font-normal lowercase">(mm)</span></th>
+                            <th class="px-2 py-2 text-left font-medium bg-amber-50/60 border-r-2 border-amber-200">Compr.<span class="ml-1 text-[9px] opacity-60 font-normal lowercase">(mm)</span></th>
+                            <th class="px-2 py-2 text-left font-medium">Pç/cx</th>
+                            <th class="px-2 py-2 text-left font-medium">Cob. Parede</th>
+                            <th class="px-2 py-2 text-left font-medium">Cob. Teto</th>
+                            <th class="px-2 py-2 text-left font-medium">PET</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-brand-line bg-white">
+                        <?php foreach ($specs as $row): ?>
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-3 py-2 font-mono text-brand-ink whitespace-nowrap"><?= e((string) ($row['code'] ?? '—')) ?></td>
+                                <td class="px-2 py-2"><?= e((string) ($row['thickness'] ?? '—')) ?></td>
+                                <td class="px-2 py-2 bg-blue-50/40 border-l-2 border-blue-200"><?= e((string) ($row['wall_height'] ?? '—')) ?></td>
+                                <td class="px-2 py-2 bg-blue-50/40"><?= e((string) ($row['wall_width'] ?? '—')) ?></td>
+                                <td class="px-2 py-2 bg-blue-50/40 border-r-2 border-blue-200"><?= e((string) ($row['wall_length'] ?? '—')) ?></td>
+                                <td class="px-2 py-2 bg-amber-50/40"><?= e((string) ($row['ceiling_height'] ?? '—')) ?></td>
+                                <td class="px-2 py-2 bg-amber-50/40"><?= e((string) ($row['ceiling_width'] ?? '—')) ?></td>
+                                <td class="px-2 py-2 bg-amber-50/40 border-r-2 border-amber-200"><?= e((string) ($row['ceiling_length'] ?? '—')) ?></td>
+                                <td class="px-2 py-2"><?= e((string) ($row['pieces_per_box'] ?? '—')) ?></td>
+                                <td class="px-2 py-2 whitespace-nowrap"><?= e((string) ($row['wall_coverage'] ?? '—')) ?></td>
+                                <td class="px-2 py-2 whitespace-nowrap"><?= e((string) ($row['ceiling_coverage'] ?? '—')) ?></td>
+                                <td class="px-2 py-2"><?= e((string) ($row['pet_bottles'] ?? '—')) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php elseif ($isMultiPiece): ?>
             <!-- Legenda das peças -->
             <div class="flex flex-wrap items-center justify-center gap-4 mb-3 text-xs text-brand-muted">
                 <span class="inline-flex items-center gap-2">

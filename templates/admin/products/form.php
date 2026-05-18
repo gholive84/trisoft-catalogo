@@ -144,13 +144,17 @@ if (!empty($product['specifications'])) {
         $specLayout = $product['spec_layout'] ?? 'simple';
         $simpleEmpty   = '{"code":"","thickness":"","a":"","b":"","c":"","d":"","pieces_per_box":"","coverage_area":"","pet_bottles":""}';
         $multiEmpty    = '{"code":"","thickness":"","p1_a":"","p1_b":"","p1_c":"","p1_pieces":"","p1_pet":"","p2_a":"","p2_b":"","p2_c":"","p2_pieces":"","pieces_per_box":"","coverage_area":"","pet_bottles":""}';
+        $wallCeilEmpty = '{"code":"","thickness":"","wall_height":"","wall_width":"","wall_length":"","ceiling_height":"","ceiling_width":"","ceiling_length":"","pieces_per_box":"","wall_coverage":"","ceiling_coverage":"","pet_bottles":""}';
         ?>
         <div class="bg-white border border-brand-line rounded-2xl p-6 space-y-3"
              x-data='{
                 layout: "<?= e($specLayout) ?>",
                 rows: <?= $specsJsonInline ?: "[]" ?>,
                 addRow() {
-                    const empty = this.layout === "multi_piece" ? <?= $multiEmpty ?> : <?= $simpleEmpty ?>;
+                    let empty;
+                    if (this.layout === "multi_piece") empty = <?= $multiEmpty ?>;
+                    else if (this.layout === "wall_ceiling") empty = <?= $wallCeilEmpty ?>;
+                    else empty = <?= $simpleEmpty ?>;
                     this.rows.push(JSON.parse(JSON.stringify(empty)));
                 },
                 removeRow(i) { this.rows.splice(i, 1); },
@@ -180,6 +184,9 @@ if (!empty($product['specifications'])) {
                         <button type="button" @click="switchLayout('multi_piece')"
                                 :class="layout === 'multi_piece' ? 'bg-white shadow text-brand-ink' : 'text-brand-muted hover:text-brand-ink'"
                                 class="px-3 py-1.5 rounded-full transition">2 Peças (P1+P2)</button>
+                        <button type="button" @click="switchLayout('wall_ceiling')"
+                                :class="layout === 'wall_ceiling' ? 'bg-white shadow text-brand-ink' : 'text-brand-muted hover:text-brand-ink'"
+                                class="px-3 py-1.5 rounded-full transition">Parede + Teto</button>
                     </div>
                     <button type="button" @click="addRow()"
                             class="bg-brand-ink text-white px-4 py-2 rounded-full text-xs font-medium hover:bg-black transition inline-flex items-center gap-1.5">
@@ -262,6 +269,59 @@ if (!empty($product['specifications'])) {
                         <input type="text" :name="`specifications[${i}][pieces_per_box]`" x-model="row.pieces_per_box" placeholder="12" class="w-full border border-emerald-200 bg-emerald-50/30 rounded px-1.5 py-1 text-[11px] focus:border-brand-blue focus:ring-1 focus:ring-brand-blue/20 transition">
                         <input type="text" :name="`specifications[${i}][coverage_area]`" x-model="row.coverage_area" placeholder="3,20 m²" class="w-full border border-emerald-200 bg-emerald-50/30 rounded px-1 py-1 text-[10px] focus:border-brand-blue focus:ring-1 focus:ring-brand-blue/20 transition">
                         <input type="text" :name="`specifications[${i}][pet_bottles]`" x-model="row.pet_bottles" placeholder="37" class="w-full border border-emerald-200 bg-emerald-50/30 rounded px-1.5 py-1 text-[11px] focus:border-brand-blue focus:ring-1 focus:ring-brand-blue/20 transition">
+                        <div class="flex items-center gap-0.5 justify-end">
+                            <button type="button" @click="duplicateRow(i)" title="Duplicar" class="w-6 h-6 rounded text-brand-muted hover:text-brand-blue hover:bg-white transition flex items-center justify-center">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                            </button>
+                            <button type="button" @click="removeRow(i)" title="Remover" class="w-6 h-6 rounded text-brand-muted hover:text-rose-600 hover:bg-rose-50 transition flex items-center justify-center">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a2 2 0 012-2h2a2 2 0 012 2v3"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+                <template x-if="rows.length === 0">
+                    <div class="text-center py-8 text-brand-muted text-sm">
+                        Nenhuma variação. <button type="button" @click="addRow()" class="text-brand-blue hover:underline font-medium">+ Adicionar primeira</button>
+                    </div>
+                </template>
+            </div>
+            </div>
+
+            <!-- LAYOUT WALL_CEILING (PARAMETRIC FLOW): 12 colunas, peca Parede + Teto -->
+            <div x-show="layout === 'wall_ceiling'" x-cloak class="overflow-x-auto -mx-2 px-2">
+            <div class="space-y-1.5 md:min-w-[1140px]">
+                <!-- Cabeçalho agrupado -->
+                <div class="hidden md:grid grid-cols-[125px_50px_repeat(3,minmax(0,1fr))_repeat(3,minmax(0,1fr))_55px_75px_75px_55px_56px] gap-1 px-1 text-[9px] uppercase tracking-widest text-brand-muted font-medium">
+                    <div></div><div></div>
+                    <div class="col-span-3 text-center bg-blue-50/80 rounded py-0.5 text-blue-700">PAREDE</div>
+                    <div class="col-span-3 text-center bg-amber-50/80 rounded py-0.5 text-amber-700">TETO</div>
+                    <div class="col-span-4 text-center bg-emerald-50/80 rounded py-0.5 text-emerald-700">COMPARTILHADO</div>
+                    <div></div>
+                </div>
+                <div class="hidden md:grid grid-cols-[125px_50px_repeat(3,minmax(0,1fr))_repeat(3,minmax(0,1fr))_55px_75px_75px_55px_56px] gap-1 px-1 text-[9px] uppercase tracking-widest text-brand-muted font-medium">
+                    <div>Code</div><div>Thick</div>
+                    <div>Altura "A"</div><div>Largura "B"</div><div>Compr.</div>
+                    <div>Altura "C"</div><div>Largura "D"</div><div>Compr.</div>
+                    <div>Pç/cx</div><div>Cob. Parede</div><div>Cob. Teto</div><div>PET</div><div></div>
+                </div>
+
+                <template x-for="(row, i) in rows" :key="'wc-' + i">
+                    <div class="grid grid-cols-[125px_50px_repeat(3,minmax(0,1fr))_repeat(3,minmax(0,1fr))_55px_75px_75px_55px_56px] gap-1 items-center bg-gray-50 rounded-lg p-1.5">
+                        <input type="text" :name="`specifications[${i}][code]`" x-model="row.code" placeholder="PF-PRF-9-0001" class="w-full border border-brand-line rounded px-1.5 py-1 font-mono text-[11px] focus:border-brand-blue focus:ring-1 focus:ring-brand-blue/20 transition">
+                        <input type="text" :name="`specifications[${i}][thickness]`" x-model="row.thickness" placeholder="9" class="w-full border border-brand-line rounded px-1.5 py-1 text-[11px] focus:border-brand-blue focus:ring-1 focus:ring-brand-blue/20 transition">
+                        <!-- PAREDE (Wall) -->
+                        <input type="text" :name="`specifications[${i}][wall_height]`" x-model="row.wall_height" placeholder="2800" class="w-full border border-blue-200 bg-blue-50/30 rounded px-1.5 py-1 text-[11px] focus:border-brand-blue focus:ring-1 focus:ring-brand-blue/20 transition">
+                        <input type="text" :name="`specifications[${i}][wall_width]`" x-model="row.wall_width" placeholder="300" class="w-full border border-blue-200 bg-blue-50/30 rounded px-1.5 py-1 text-[11px] focus:border-brand-blue focus:ring-1 focus:ring-brand-blue/20 transition">
+                        <input type="text" :name="`specifications[${i}][wall_length]`" x-model="row.wall_length" placeholder="1130" class="w-full border border-blue-200 bg-blue-50/30 rounded px-1.5 py-1 text-[11px] focus:border-brand-blue focus:ring-1 focus:ring-brand-blue/20 transition">
+                        <!-- TETO (Ceiling) -->
+                        <input type="text" :name="`specifications[${i}][ceiling_height]`" x-model="row.ceiling_height" placeholder="2800" class="w-full border border-amber-200 bg-amber-50/30 rounded px-1.5 py-1 text-[11px] focus:border-brand-blue focus:ring-1 focus:ring-brand-blue/20 transition">
+                        <input type="text" :name="`specifications[${i}][ceiling_width]`" x-model="row.ceiling_width" placeholder="60" class="w-full border border-amber-200 bg-amber-50/30 rounded px-1.5 py-1 text-[11px] focus:border-brand-blue focus:ring-1 focus:ring-brand-blue/20 transition">
+                        <input type="text" :name="`specifications[${i}][ceiling_length]`" x-model="row.ceiling_length" placeholder="1130" class="w-full border border-amber-200 bg-amber-50/30 rounded px-1.5 py-1 text-[11px] focus:border-brand-blue focus:ring-1 focus:ring-brand-blue/20 transition">
+                        <!-- Shared -->
+                        <input type="text" :name="`specifications[${i}][pieces_per_box]`" x-model="row.pieces_per_box" placeholder="16" class="w-full border border-emerald-200 bg-emerald-50/30 rounded px-1.5 py-1 text-[11px] focus:border-brand-blue focus:ring-1 focus:ring-brand-blue/20 transition">
+                        <input type="text" :name="`specifications[${i}][wall_coverage]`" x-model="row.wall_coverage" placeholder="3,16 m²" class="w-full border border-emerald-200 bg-emerald-50/30 rounded px-1 py-1 text-[10px] focus:border-brand-blue focus:ring-1 focus:ring-brand-blue/20 transition">
+                        <input type="text" :name="`specifications[${i}][ceiling_coverage]`" x-model="row.ceiling_coverage" placeholder="3,50 m²" class="w-full border border-emerald-200 bg-emerald-50/30 rounded px-1 py-1 text-[10px] focus:border-brand-blue focus:ring-1 focus:ring-brand-blue/20 transition">
+                        <input type="text" :name="`specifications[${i}][pet_bottles]`" x-model="row.pet_bottles" placeholder="94" class="w-full border border-emerald-200 bg-emerald-50/30 rounded px-1.5 py-1 text-[11px] focus:border-brand-blue focus:ring-1 focus:ring-brand-blue/20 transition">
                         <div class="flex items-center gap-0.5 justify-end">
                             <button type="button" @click="duplicateRow(i)" title="Duplicar" class="w-6 h-6 rounded text-brand-muted hover:text-brand-blue hover:bg-white transition flex items-center justify-center">
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>

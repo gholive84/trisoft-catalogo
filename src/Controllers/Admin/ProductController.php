@@ -309,14 +309,23 @@ final class ProductController
         // Layout multi_piece: code, thickness, p1_a, p1_b, p1_c, p1_pieces, p1_pet,
         //                     p2_a, p2_b, p2_c, p2_pieces, pieces_per_box, coverage_area, pet_bottles
         $specLayout = trim((string) $request->post('spec_layout', 'simple'));
-        if (!in_array($specLayout, ['simple', 'multi_piece'], true)) $specLayout = 'simple';
+        if (!in_array($specLayout, ['simple', 'multi_piece', 'wall_ceiling'], true)) $specLayout = 'simple';
 
         $castInt = fn ($v) => is_numeric($v) ? (int) $v : trim((string) ($v ?? ''));
 
         $simpleKeys = ['code', 'thickness', 'a', 'b', 'c', 'd', 'pieces_per_box', 'coverage_area', 'pet_bottles'];
         $multiKeys  = ['code', 'thickness', 'p1_a', 'p1_b', 'p1_c', 'p1_pieces', 'p1_pet',
                        'p2_a', 'p2_b', 'p2_c', 'p2_pieces', 'pieces_per_box', 'coverage_area', 'pet_bottles'];
-        $allowedKeys = $specLayout === 'multi_piece' ? $multiKeys : $simpleKeys;
+        $wallCeilKeys = ['code', 'thickness', 'wall_height', 'wall_width', 'wall_length',
+                         'ceiling_height', 'ceiling_width', 'ceiling_length',
+                         'pieces_per_box', 'wall_coverage', 'ceiling_coverage', 'pet_bottles'];
+        $allowedKeys = match ($specLayout) {
+            'multi_piece'  => $multiKeys,
+            'wall_ceiling' => $wallCeilKeys,
+            default        => $simpleKeys,
+        };
+        // Campos textuais (string) por layout
+        $textFields = ['code', 'coverage_area', 'wall_coverage', 'ceiling_coverage'];
 
         $specifications = null;
         $specsArray = (array) $request->post('specifications', []);
@@ -329,7 +338,7 @@ final class ProductController
                 $out = [];
                 foreach ($allowedKeys as $k) {
                     $v = $row[$k] ?? '';
-                    if ($k === 'code' || $k === 'coverage_area') {
+                    if (in_array($k, $textFields, true)) {
                         $out[$k] = trim((string) $v);
                     } else {
                         $out[$k] = $castInt($v);
