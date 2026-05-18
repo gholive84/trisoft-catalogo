@@ -146,6 +146,17 @@ if (!empty($product['specifications'])) {
         $multiEmpty    = '{"code":"","thickness":"","p1_a":"","p1_b":"","p1_c":"","p1_pieces":"","p1_pet":"","p2_a":"","p2_b":"","p2_c":"","p2_pieces":"","pieces_per_box":"","coverage_area":"","pet_bottles":""}';
         $wallCeilEmpty = '{"code":"","thickness":"","wall_height":"","wall_width":"","wall_length":"","ceiling_height":"","ceiling_width":"","ceiling_length":"","pieces_per_box":"","wall_coverage":"","ceiling_coverage":"","pet_bottles":""}';
 
+        // Layout flexible: spec_schema define as colunas dinamicamente.
+        $flexSchema = $product['spec_schema'] ?? null;
+        if (is_string($flexSchema)) $flexSchema = json_decode($flexSchema, true);
+        if (!is_array($flexSchema) || empty($flexSchema['columns'])) {
+            // Schema default minimo: so a coluna 'code' (obrigatoria).
+            $flexSchema = ['columns' => [
+                ['key'=>'code','label'=>'Code','unit'=>null,'color'=>null,'group'=>null],
+            ]];
+        }
+        $flexSchemaJson = htmlspecialchars(json_encode($flexSchema, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
+
         // Labels customizados para colunas A-H (layout simples).
         // Quando algum label e-h tem valor, o admin exibe as colunas extras E-H.
         $columnLabelsArr = $product['spec_column_labels'] ?? null;
@@ -167,10 +178,44 @@ if (!empty($product['specifications'])) {
                 layout: "<?= e($specLayout) ?>",
                 rows: <?= $specsJsonInline ?: "[]" ?>,
                 columnLabels: <?= $columnLabelsJson ?>,
+                flexSchema: <?= $flexSchemaJson ?>,
+                colorOptions: [
+                    {value: "", label: "Sem cor"},
+                    {value: "blue", label: "Azul"},
+                    {value: "amber", label: "Âmbar"},
+                    {value: "emerald", label: "Verde"},
+                    {value: "rose", label: "Rosa"},
+                    {value: "purple", label: "Roxo"},
+                    {value: "slate", label: "Cinza"},
+                ],
+                colorClass(c) {
+                    return ({
+                        blue: "bg-blue-50/40 border-blue-200",
+                        amber: "bg-amber-50/40 border-amber-200",
+                        emerald: "bg-emerald-50/40 border-emerald-200",
+                        rose: "bg-rose-50/40 border-rose-200",
+                        purple: "bg-purple-50/40 border-purple-200",
+                        slate: "bg-slate-50/40 border-slate-200",
+                    })[c] || "border-brand-line";
+                },
+                colorHeaderClass(c) {
+                    return ({
+                        blue: "bg-blue-100 text-blue-800",
+                        amber: "bg-amber-100 text-amber-800",
+                        emerald: "bg-emerald-100 text-emerald-800",
+                        rose: "bg-rose-100 text-rose-800",
+                        purple: "bg-purple-100 text-purple-800",
+                        slate: "bg-slate-100 text-slate-800",
+                    })[c] || "bg-gray-100 text-brand-muted";
+                },
                 addRow() {
                     let empty;
                     if (this.layout === "multi_piece") empty = <?= $multiEmpty ?>;
                     else if (this.layout === "wall_ceiling") empty = <?= $wallCeilEmpty ?>;
+                    else if (this.layout === "flexible") {
+                        empty = {};
+                        for (const col of this.flexSchema.columns) empty[col.key] = "";
+                    }
                     else empty = <?= $simpleEmpty ?>;
                     this.rows.push(JSON.parse(JSON.stringify(empty)));
                 },
@@ -180,9 +225,26 @@ if (!empty($product['specifications'])) {
                     this.rows.splice(i + 1, 0, c);
                 },
                 switchLayout(newLayout) {
-                    // Ao mudar layout, NAO apaga dados — apenas troca a renderizacao.
-                    // Campos do layout antigo continuam no JSON mas ficam ocultos.
                     this.layout = newLayout;
+                },
+                // === Flexible: manipulacao de colunas ===
+                addColumn() {
+                    const i = this.flexSchema.columns.length;
+                    const key = "col_" + (i + 1);
+                    this.flexSchema.columns.push({key: key, label: "Nova coluna", unit: "", color: "", group: ""});
+                    for (const row of this.rows) row[key] = "";
+                },
+                removeColumn(i) {
+                    if (this.flexSchema.columns[i].key === "code") return;
+                    const key = this.flexSchema.columns[i].key;
+                    this.flexSchema.columns.splice(i, 1);
+                    for (const row of this.rows) delete row[key];
+                },
+                moveColumn(i, dir) {
+                    const j = i + dir;
+                    if (j < 1 || j >= this.flexSchema.columns.length) return; // code (idx 0) nao move
+                    if (i === 0) return;
+                    [this.flexSchema.columns[i], this.flexSchema.columns[j]] = [this.flexSchema.columns[j], this.flexSchema.columns[i]];
                 }
              }'>
             <input type="hidden" name="spec_layout" :value="layout">
@@ -204,6 +266,9 @@ if (!empty($product['specifications'])) {
                         <button type="button" @click="switchLayout('wall_ceiling')"
                                 :class="layout === 'wall_ceiling' ? 'bg-white shadow text-brand-ink' : 'text-brand-muted hover:text-brand-ink'"
                                 class="px-3 py-1.5 rounded-full transition">Parede + Teto</button>
+                        <button type="button" @click="switchLayout('flexible')"
+                                :class="layout === 'flexible' ? 'bg-white shadow text-brand-ink' : 'text-brand-muted hover:text-brand-ink'"
+                                class="px-3 py-1.5 rounded-full transition">Flexível</button>
                     </div>
                     <button type="button" @click="addRow()"
                             class="bg-brand-ink text-white px-4 py-2 rounded-full text-xs font-medium hover:bg-black transition inline-flex items-center gap-1.5">
@@ -406,6 +471,96 @@ if (!empty($product['specifications'])) {
                     </div>
                 </template>
             </div>
+            </div>
+
+            <!-- LAYOUT FLEXIVEL: admin define colunas dinamicamente -->
+            <div x-show="layout === 'flexible'" x-cloak class="space-y-4">
+                <!-- Inputs hidden p/ submit do spec_schema -->
+                <template x-for="(col, ci) in flexSchema.columns" :key="'fc-' + ci">
+                    <span class="hidden">
+                        <input type="hidden" :name="`spec_schema[columns][${ci}][key]`"   :value="col.key">
+                        <input type="hidden" :name="`spec_schema[columns][${ci}][label]`" :value="col.label">
+                        <input type="hidden" :name="`spec_schema[columns][${ci}][unit]`"  :value="col.unit || ''">
+                        <input type="hidden" :name="`spec_schema[columns][${ci}][color]`" :value="col.color || ''">
+                        <input type="hidden" :name="`spec_schema[columns][${ci}][group]`" :value="col.group || ''">
+                    </span>
+                </template>
+
+                <!-- Editor das colunas -->
+                <div class="bg-gray-50 rounded-xl p-4 border border-brand-line/50">
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <h3 class="text-sm font-semibold text-brand-ink">Estrutura das colunas</h3>
+                            <p class="text-[11px] text-brand-muted mt-0.5">Defina o label, unidade, cor e grupo de cada coluna. <span class="font-medium">"Code" é obrigatória</span>.</p>
+                        </div>
+                        <button type="button" @click="addColumn()" class="bg-brand-ink text-white px-3 py-1.5 rounded-full text-xs font-medium hover:bg-black transition inline-flex items-center gap-1.5">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                            Coluna
+                        </button>
+                    </div>
+                    <div class="space-y-1.5">
+                        <div class="hidden md:grid grid-cols-[20px_2fr_0.8fr_1fr_1.2fr_80px] gap-2 px-2 text-[10px] uppercase tracking-widest text-brand-muted font-medium">
+                            <div></div><div>Label</div><div>Unidade</div><div>Cor</div><div>Grupo (opcional)</div><div></div>
+                        </div>
+                        <template x-for="(col, ci) in flexSchema.columns" :key="'col-' + ci">
+                            <div class="grid grid-cols-1 md:grid-cols-[20px_2fr_0.8fr_1fr_1.2fr_80px] gap-2 items-center bg-white rounded-lg p-2 border" :class="colorClass(col.color)">
+                                <div class="text-[10px] text-brand-muted font-mono text-center" x-text="ci + 1"></div>
+                                <input type="text" x-model="col.label" placeholder="Code" class="w-full border border-brand-line rounded px-2 py-1 text-xs">
+                                <input type="text" x-model="col.unit" placeholder="mm" class="w-full border border-brand-line rounded px-2 py-1 text-xs" :disabled="col.key === 'code'">
+                                <select x-model="col.color" class="w-full border border-brand-line rounded px-2 py-1 text-xs">
+                                    <template x-for="opt in colorOptions" :key="opt.value"><option :value="opt.value" x-text="opt.label"></option></template>
+                                </select>
+                                <input type="text" x-model="col.group" placeholder="Ex: Cube, Brick..." class="w-full border border-brand-line rounded px-2 py-1 text-xs">
+                                <div class="flex items-center gap-0.5 justify-end">
+                                    <button type="button" @click="moveColumn(ci, -1)" :disabled="ci <= 1" title="Subir" class="w-6 h-6 rounded text-brand-muted hover:text-brand-blue hover:bg-gray-100 transition flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed">↑</button>
+                                    <button type="button" @click="moveColumn(ci, 1)"  :disabled="ci === 0 || ci === flexSchema.columns.length - 1" title="Descer" class="w-6 h-6 rounded text-brand-muted hover:text-brand-blue hover:bg-gray-100 transition flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed">↓</button>
+                                    <button type="button" @click="removeColumn(ci)" :disabled="col.key === 'code'" title="Remover" class="w-6 h-6 rounded text-brand-muted hover:text-rose-600 hover:bg-rose-50 transition flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed">🗑</button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Editor das linhas -->
+                <div class="overflow-x-auto -mx-2 px-2">
+                    <div class="space-y-2 min-w-fit">
+                        <!-- Header com agrupamento por 'group' (renderiza colspan colorido) -->
+                        <div class="hidden md:flex gap-1 px-2 text-[10px] uppercase tracking-widest text-brand-muted font-medium"
+                             :style="'display: grid; grid-template-columns: ' + flexSchema.columns.map(()=>'minmax(80px,1fr)').join(' ') + ' 50px;'">
+                            <template x-for="(col, ci) in flexSchema.columns" :key="'h-' + ci">
+                                <div class="px-1 py-1 rounded" :class="col.color ? colorHeaderClass(col.color) : ''">
+                                    <div x-text="col.label || col.key"></div>
+                                    <div x-show="col.unit" class="text-[9px] opacity-60 normal-case" x-text="'(' + col.unit + ')'"></div>
+                                    <div x-show="col.group" class="text-[9px] opacity-80 normal-case italic" x-text="col.group"></div>
+                                </div>
+                            </template>
+                            <div></div>
+                        </div>
+                        <!-- Rows -->
+                        <template x-for="(row, ri) in rows" :key="'fr-' + ri">
+                            <div class="bg-gray-50 rounded-xl p-2 gap-1 items-center"
+                                 :style="'display: grid; grid-template-columns: ' + flexSchema.columns.map(()=>'minmax(80px,1fr)').join(' ') + ' 50px;'">
+                                <template x-for="(col, ci) in flexSchema.columns" :key="'fri-' + ri + '-' + ci">
+                                    <input type="text"
+                                           :name="`specifications[${ri}][${col.key}]`"
+                                           x-model="row[col.key]"
+                                           :placeholder="col.label"
+                                           class="w-full border rounded px-2 py-1 text-xs"
+                                           :class="colorClass(col.color)">
+                                </template>
+                                <div class="flex items-center gap-0.5 justify-end">
+                                    <button type="button" @click="duplicateRow(ri)" title="Duplicar" class="w-6 h-6 rounded text-brand-muted hover:text-brand-blue hover:bg-white transition flex items-center justify-center">⎘</button>
+                                    <button type="button" @click="removeRow(ri)" title="Remover" class="w-6 h-6 rounded text-brand-muted hover:text-rose-600 hover:bg-rose-50 transition flex items-center justify-center">×</button>
+                                </div>
+                            </div>
+                        </template>
+                        <template x-if="rows.length === 0">
+                            <div class="text-center py-8 text-brand-muted text-sm">
+                                Nenhuma variação. <button type="button" @click="addRow()" class="text-brand-blue hover:underline font-medium">+ Adicionar primeira</button>
+                            </div>
+                        </template>
+                    </div>
+                </div>
             </div>
 
             <div class="flex items-center justify-between pt-3 border-t border-brand-line">

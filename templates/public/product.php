@@ -142,9 +142,104 @@ $primaryCategory = $categories[0] ?? null;
         $specLayoutVal = $product['spec_layout'] ?? 'simple';
         $isMultiPiece  = $specLayoutVal === 'multi_piece';
         $isWallCeiling = $specLayoutVal === 'wall_ceiling';
+        $isFlexible    = $specLayoutVal === 'flexible';
+
+        // Mapeamento de cor -> classes Tailwind (paleta fixa).
+        $flexColorHeader = [
+            'blue'    => 'bg-blue-100 text-blue-800 border-blue-200',
+            'amber'   => 'bg-amber-100 text-amber-800 border-amber-200',
+            'emerald' => 'bg-emerald-100 text-emerald-800 border-emerald-200',
+            'rose'    => 'bg-rose-100 text-rose-800 border-rose-200',
+            'purple'  => 'bg-purple-100 text-purple-800 border-purple-200',
+            'slate'   => 'bg-slate-100 text-slate-800 border-slate-200',
+        ];
+        $flexColorCell = [
+            'blue'    => 'bg-blue-50/40 border-blue-200',
+            'amber'   => 'bg-amber-50/40 border-amber-200',
+            'emerald' => 'bg-emerald-50/40 border-emerald-200',
+            'rose'    => 'bg-rose-50/40 border-rose-200',
+            'purple'  => 'bg-purple-50/40 border-purple-200',
+            'slate'   => 'bg-slate-50/40 border-slate-200',
+        ];
         ?>
 
-        <?php if ($isWallCeiling): ?>
+        <?php if ($isFlexible):
+            // Carrega schema dinamico
+            $flexSchema = $product['spec_schema'] ?? null;
+            if (is_string($flexSchema)) $flexSchema = json_decode($flexSchema, true);
+            $flexCols = (is_array($flexSchema) && !empty($flexSchema['columns'])) ? $flexSchema['columns'] : [];
+
+            // Skip coluna onde TODAS as rows estao vazias (mesma logica do simple)
+            $visibleCols = [];
+            foreach ($flexCols as $col) {
+                $k = $col['key'];
+                if ($k === 'code') { $visibleCols[] = $col; continue; }
+                foreach ($specs as $row) {
+                    $v = $row[$k] ?? null;
+                    if ($v !== null && $v !== '' && $v !== 0 && $v !== '0') {
+                        $visibleCols[] = $col;
+                        break;
+                    }
+                }
+            }
+
+            // Construir linhas de header: se ha grupos consecutivos, agrupa em header superior.
+            $groupBlocks = []; // [[group, color, colspan, startIdx]]
+            $curGroup = null; $curColor = null; $curSpan = 0; $curStart = 0;
+            foreach ($visibleCols as $idx => $col) {
+                $g = $col['group'] ?? null;
+                $c = $col['color'] ?? null;
+                if ($g === $curGroup && $c === $curColor && $g !== null) {
+                    $curSpan++;
+                } else {
+                    if ($curSpan > 0) $groupBlocks[] = ['group'=>$curGroup,'color'=>$curColor,'colspan'=>$curSpan,'start'=>$curStart];
+                    $curGroup = $g; $curColor = $c; $curSpan = 1; $curStart = $idx;
+                }
+            }
+            if ($curSpan > 0) $groupBlocks[] = ['group'=>$curGroup,'color'=>$curColor,'colspan'=>$curSpan,'start'=>$curStart];
+            $hasGroups = false;
+            foreach ($groupBlocks as $b) { if (!empty($b['group'])) { $hasGroups = true; break; } }
+        ?>
+            <div class="overflow-x-auto mb-10 border border-brand-line rounded-2xl">
+                <table class="w-full text-xs md:text-sm">
+                    <thead class="border-b border-brand-line">
+                        <?php if ($hasGroups): ?>
+                            <tr class="text-xs uppercase tracking-widest bg-gray-50">
+                                <?php foreach ($groupBlocks as $b):
+                                    $bgClass = $b['color'] && isset($flexColorHeader[$b['color']]) ? $flexColorHeader[$b['color']] : 'text-brand-muted text-[10px]';
+                                ?>
+                                    <th colspan="<?= (int) $b['colspan'] ?>" class="px-2 py-3 text-center font-bold border-l border-r <?= e($bgClass) ?>">
+                                        <?= !empty($b['group']) ? '▸ ' . e($b['group']) : '' ?>
+                                    </th>
+                                <?php endforeach; ?>
+                            </tr>
+                        <?php endif; ?>
+                        <tr class="text-[10px] md:text-xs uppercase tracking-widest text-brand-muted bg-gray-50 border-t border-brand-line">
+                            <?php foreach ($visibleCols as $col):
+                                $hdr = $col['color'] && isset($flexColorHeader[$col['color']]) ? $flexColorHeader[$col['color']] : '';
+                            ?>
+                                <th class="px-3 py-2 text-left font-medium <?= e($hdr) ?>">
+                                    <?= e($col['label']) ?><?php if (!empty($col['unit'])): ?><span class="ml-1 text-[10px] opacity-60 font-normal lowercase">(<?= e($col['unit']) ?>)</span><?php endif; ?>
+                                </th>
+                            <?php endforeach; ?>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-brand-line bg-white">
+                        <?php foreach ($specs as $row): ?>
+                            <tr class="hover:bg-gray-50">
+                                <?php foreach ($visibleCols as $col):
+                                    $cellClass = $col['color'] && isset($flexColorCell[$col['color']]) ? $flexColorCell[$col['color']] : '';
+                                    $val = $row[$col['key']] ?? '';
+                                    if ($val === '' || $val === null) $val = '—';
+                                ?>
+                                    <td class="px-3 py-2 text-brand-ink <?= e($cellClass) ?>"><?= e((string) $val) ?></td>
+                                <?php endforeach; ?>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php elseif ($isWallCeiling): ?>
             <!-- Legenda Parede / Teto -->
             <div class="flex flex-wrap items-center justify-center gap-4 mb-3 text-xs text-brand-muted">
                 <span class="inline-flex items-center gap-2">

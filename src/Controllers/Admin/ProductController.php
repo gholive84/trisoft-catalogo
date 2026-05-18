@@ -288,6 +288,7 @@ final class ProductController
             'specifications' => null,
             'spec_layout' => 'simple',
             'spec_column_labels' => null,
+            'spec_schema' => null,
             'price' => 0,
             'cost' => null,
             'stock_quantity' => null,
@@ -316,7 +317,7 @@ final class ProductController
         // Layout multi_piece: code, thickness, p1_a, p1_b, p1_c, p1_pieces, p1_pet,
         //                     p2_a, p2_b, p2_c, p2_pieces, pieces_per_box, coverage_area, pet_bottles
         $specLayout = trim((string) $request->post('spec_layout', 'simple'));
-        if (!in_array($specLayout, ['simple', 'multi_piece', 'wall_ceiling'], true)) $specLayout = 'simple';
+        if (!in_array($specLayout, ['simple', 'multi_piece', 'wall_ceiling', 'flexible'], true)) $specLayout = 'simple';
 
         $castInt = fn ($v) => is_numeric($v) ? (int) $v : trim((string) ($v ?? ''));
 
@@ -328,13 +329,61 @@ final class ProductController
         $wallCeilKeys = ['code', 'thickness', 'wall_height', 'wall_width', 'wall_length',
                          'ceiling_height', 'ceiling_width', 'ceiling_length',
                          'pieces_per_box', 'wall_coverage', 'ceiling_coverage', 'pet_bottles'];
-        $allowedKeys = match ($specLayout) {
-            'multi_piece'  => $multiKeys,
-            'wall_ceiling' => $wallCeilKeys,
-            default        => $simpleKeys,
-        };
         // Campos textuais (string) por layout
         $textFields = ['code', 'coverage_area', 'wall_coverage', 'ceiling_coverage'];
+
+        // === Layout FLEXIBLE: schema dinamico ===
+        // spec_schema[columns][N][key|label|unit|color|group]
+        // Unica coluna obrigatoria: 'code'. Demais sao definidas pelo admin.
+        $specSchema = null;
+        if ($specLayout === 'flexible') {
+            $rawSchema = (array) $request->post('spec_schema', []);
+            $rawColumns = (array) ($rawSchema['columns'] ?? []);
+            $colorWhitelist = ['blue', 'amber', 'emerald', 'rose', 'purple', 'slate'];
+            $columns = [];
+            $usedKeys = [];
+            foreach ($rawColumns as $i => $col) {
+                if (!is_array($col)) continue;
+                $label = trim((string) ($col['label'] ?? ''));
+                if ($label === '') continue;
+                $key = trim((string) ($col['key'] ?? ''));
+                if ($key === '') $key = slugify($label);
+                if ($key === '') $key = "col_$i";
+                // Evita colisao de keys
+                $orig = $key; $n = 1;
+                while (in_array($key, $usedKeys, true)) { $key = $orig . '_' . (++$n); }
+                $usedKeys[] = $key;
+                $unit = trim((string) ($col['unit'] ?? ''));
+                $color = trim((string) ($col['color'] ?? ''));
+                if (!in_array($color, $colorWhitelist, true)) $color = null;
+                $group = trim((string) ($col['group'] ?? ''));
+                $columns[] = [
+                    'key' => substr($key, 0, 60),
+                    'label' => substr($label, 0, 80),
+                    'unit' => $unit !== '' ? substr($unit, 0, 30) : null,
+                    'color' => $color,
+                    'group' => $group !== '' ? substr($group, 0, 60) : null,
+                ];
+            }
+            // Garante coluna 'code' presente como primeira
+            $hasCode = false;
+            foreach ($columns as $c) { if ($c['key'] === 'code') { $hasCode = true; break; } }
+            if (!$hasCode) {
+                array_unshift($columns, ['key'=>'code','label'=>'Code','unit'=>null,'color'=>null,'group'=>null]);
+            }
+            if ($columns !== []) $specSchema = ['columns' => $columns];
+        }
+
+        // === Keys aceitas para o rows ===
+        if ($specLayout === 'flexible' && $specSchema !== null) {
+            $allowedKeys = array_map(fn ($c) => $c['key'], $specSchema['columns']);
+        } else {
+            $allowedKeys = match ($specLayout) {
+                'multi_piece'  => $multiKeys,
+                'wall_ceiling' => $wallCeilKeys,
+                default        => $simpleKeys,
+            };
+        }
 
         $specifications = null;
         $specsArray = (array) $request->post('specifications', []);
@@ -347,7 +396,10 @@ final class ProductController
                 $out = [];
                 foreach ($allowedKeys as $k) {
                     $v = $row[$k] ?? '';
-                    if (in_array($k, $textFields, true)) {
+                    // No flexible, todos os values sao tratados como string (admin define).
+                    if ($specLayout === 'flexible') {
+                        $out[$k] = trim((string) $v);
+                    } elseif (in_array($k, $textFields, true)) {
                         $out[$k] = trim((string) $v);
                     } else {
                         $out[$k] = $castInt($v);
@@ -382,6 +434,7 @@ final class ProductController
             'specifications'    => $specifications,
             'spec_layout'       => $specLayout,
             'spec_column_labels'=> $specColumnLabels,
+            'spec_schema'       => $specSchema,
             'price'             => (float) str_replace(',', '.', (string) $request->post('price', '0')),
             'cost'              => $request->post('cost') !== null && $request->post('cost') !== ''
                                     ? (float) str_replace(',', '.', (string) $request->post('cost')) : null,
@@ -433,12 +486,12 @@ final class ProductController
         $stmt = $this->pdo->prepare(
             "INSERT INTO products
                 (sku, name, subtitle, slug, short_description, description, specifications, spec_layout,
-                 spec_column_labels,
+                 spec_column_labels, spec_schema,
                  price, cost, stock_quantity, weight_kg, width_cm, height_cm, length_cm,
                  is_active, is_featured, meta_title, meta_description)
              VALUES
                 (:sku, :name, :sub, :slug, :short, :desc, :specs, :slayout,
-                 :slabels,
+                 :slabels, :sschema,
                  :price, :cost, :stock, :wkg, :w, :h, :l,
                  :active, :featured, :mt, :md)"
         );
@@ -449,6 +502,7 @@ final class ProductController
             'specs' => $d['specifications'] !== null ? json_encode($d['specifications'], JSON_UNESCAPED_UNICODE) : null,
             'slayout' => $d['spec_layout'] ?? 'simple',
             'slabels' => !empty($d['spec_column_labels']) ? json_encode($d['spec_column_labels'], JSON_UNESCAPED_UNICODE) : null,
+            'sschema' => !empty($d['spec_schema']) ? json_encode($d['spec_schema'], JSON_UNESCAPED_UNICODE) : null,
             'price' => $d['price'], 'cost' => $d['cost'], 'stock' => $d['stock_quantity'],
             'wkg' => $d['weight_kg'], 'w' => $d['width_cm'], 'h' => $d['height_cm'], 'l' => $d['length_cm'],
             'active' => $d['is_active'], 'featured' => $d['is_featured'],
@@ -465,6 +519,7 @@ final class ProductController
                 short_description = :short, description = :desc, specifications = :specs,
                 spec_layout = :slayout,
                 spec_column_labels = :slabels,
+                spec_schema = :sschema,
                 price = :price, cost = :cost, stock_quantity = :stock,
                 weight_kg = :wkg, width_cm = :w, height_cm = :h, length_cm = :l,
                 is_active = :active, is_featured = :featured,
@@ -479,6 +534,7 @@ final class ProductController
             'specs' => $d['specifications'] !== null ? json_encode($d['specifications'], JSON_UNESCAPED_UNICODE) : null,
             'slayout' => $d['spec_layout'] ?? 'simple',
             'slabels' => !empty($d['spec_column_labels']) ? json_encode($d['spec_column_labels'], JSON_UNESCAPED_UNICODE) : null,
+            'sschema' => !empty($d['spec_schema']) ? json_encode($d['spec_schema'], JSON_UNESCAPED_UNICODE) : null,
             'price' => $d['price'], 'cost' => $d['cost'], 'stock' => $d['stock_quantity'],
             'wkg' => $d['weight_kg'], 'w' => $d['width_cm'], 'h' => $d['height_cm'], 'l' => $d['length_cm'],
             'active' => $d['is_active'], 'featured' => $d['is_featured'],
