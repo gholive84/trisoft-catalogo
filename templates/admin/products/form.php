@@ -307,6 +307,30 @@ if (!empty($product['specifications'])) {
         </div>
 
         <script>
+            // POST helper para acoes nas thumbnails da galeria (set main / excluir).
+            // Substitui o <form> aninhado que quebrava o form principal (HTML invalido).
+            async function postImageAction(productId, imageId, action, btn) {
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+                const csrf = document.querySelector('input[name="_csrf"]')?.value || '';
+                const fd = new FormData();
+                fd.append('_csrf', csrf);
+                fd.append('image_id', imageId);
+                const url = `<?= e(url('admin/produtos')) ?>/${productId}/imagens/${action}`;
+                try {
+                    const res = await fetch(url, { method: 'POST', body: fd, credentials: 'same-origin' });
+                    if (res.ok || res.redirected) {
+                        window.location.reload();
+                    } else {
+                        alert('Falha: HTTP ' + res.status);
+                        btn.disabled = false; btn.style.opacity = '1';
+                    }
+                } catch (e) {
+                    alert('Erro de rede: ' + e.message);
+                    btn.disabled = false; btn.style.opacity = '1';
+                }
+            }
+
             function techImagePicker(originalUrl) {
                 return {
                     originalUrl: originalUrl,
@@ -395,19 +419,16 @@ if (!empty($product['specifications'])) {
                                 <span class="absolute top-2 left-2 bg-brand-blue text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Principal</span>
                             <?php endif; ?>
                             <div class="absolute inset-x-0 bottom-0 p-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                                <?php // Sem <form> aninhado (HTML invalido quebra o form principal).
+                                      // Usa POST via fetch + reload. ?>
                                 <?php if (!$img['is_main']): ?>
-                                    <form method="post" action="<?= e(url('admin/produtos/' . $product['id'] . '/imagens/principal')) ?>" class="flex-1">
-                                        <?= csrf_field() ?>
-                                        <input type="hidden" name="image_id" value="<?= e((string) $img['id']) ?>">
-                                        <button class="w-full bg-white/95 text-xs py-1 rounded hover:bg-white">★ principal</button>
-                                    </form>
+                                    <button type="button"
+                                            onclick="postImageAction(<?= (int) $product['id'] ?>, <?= (int) $img['id'] ?>, 'principal', this)"
+                                            class="flex-1 bg-white/95 text-xs py-1 rounded hover:bg-white">★ principal</button>
                                 <?php endif; ?>
-                                <form method="post" action="<?= e(url('admin/produtos/' . $product['id'] . '/imagens/excluir')) ?>"
-                                      class="flex-1" onsubmit="return confirm('Remover esta imagem?');">
-                                    <?= csrf_field() ?>
-                                    <input type="hidden" name="image_id" value="<?= e((string) $img['id']) ?>">
-                                    <button class="w-full bg-rose-600 text-white text-xs py-1 rounded hover:bg-rose-700">excluir</button>
-                                </form>
+                                <button type="button"
+                                        onclick="if(confirm('Remover esta imagem?')) postImageAction(<?= (int) $product['id'] ?>, <?= (int) $img['id'] ?>, 'excluir', this)"
+                                        class="flex-1 bg-rose-600 text-white text-xs py-1 rounded hover:bg-rose-700">excluir</button>
                             </div>
                         </div>
                     <?php endforeach; ?>
