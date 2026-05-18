@@ -143,33 +143,36 @@ $primaryCategory = $categories[0] ?? null;
                 <thead class="border-b border-brand-line">
                     <tr class="text-xs uppercase tracking-widest text-brand-muted bg-gray-50">
                         <?php
+                        // [label_principal, unidade_opcional] — unidade renderizada menor
                         $columns = [
-                            'code'           => 'Code',
-                            'thickness'      => 'Thickness',
-                            'a'              => '"A" (mm)',
-                            'b'              => '"B" (mm)',
-                            'c'              => '"C" (mm)',
-                            'd'              => '"D" (mm)',
-                            'pieces_per_box' => 'Peças/cx',
-                            'coverage_area'  => 'Cobertura',
-                            'pet_bottles'    => 'PET Bottles',
+                            'code'           => ['Code',        null],
+                            'thickness'      => ['Thickness',   'mm'],
+                            'a'              => ['"A"',         'mm'],
+                            'b'              => ['"B"',         'mm'],
+                            'c'              => ['"C"',         'mm'],
+                            'd'              => ['"D"',         'mm'],
+                            'pieces_per_box' => ['Peças/cx',    null],
+                            'coverage_area'  => ['Cobertura',   null],
+                            'pet_bottles'    => ['PET Bottles', null],
                         ];
                         // Mostra apenas colunas que tem valor em PELO MENOS uma linha
                         // (esconde colunas totalmente vazias como C/D/Cobertura quando o produto nao tem)
                         $presentColumns = [];
-                        foreach ($columns as $key => $label) {
+                        foreach ($columns as $key => $colDef) {
                             // 'code' sempre aparece
-                            if ($key === 'code') { $presentColumns[$key] = $label; continue; }
+                            if ($key === 'code') { $presentColumns[$key] = $colDef; continue; }
                             foreach ($specs as $row) {
                                 $v = $row[$key] ?? null;
                                 if ($v !== null && $v !== '' && $v !== 0 && $v !== '0') {
-                                    $presentColumns[$key] = $label;
+                                    $presentColumns[$key] = $colDef;
                                     break;
                                 }
                             }
                         }
-                        foreach ($presentColumns as $key => $label): ?>
-                            <th class="px-4 py-3 text-left font-medium"><?= e($label) ?></th>
+                        foreach ($presentColumns as $key => [$label, $unit]): ?>
+                            <th class="px-4 py-3 text-left font-medium">
+                                <?= e($label) ?><?php if ($unit): ?><span class="ml-1 text-[10px] opacity-60 font-normal lowercase">(<?= e($unit) ?>)</span><?php endif; ?>
+                            </th>
                         <?php endforeach; ?>
                     </tr>
                 </thead>
