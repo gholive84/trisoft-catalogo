@@ -166,9 +166,9 @@ if (!empty($product['specifications'])) {
 
             <!-- Tabela com scroll horizontal interno: nao estoura largura do form -->
             <div class="overflow-x-auto -mx-2 px-2">
-            <div class="space-y-2 md:min-w-[900px]">
+            <div class="space-y-2 md:min-w-[760px]">
                 <!-- Header (visual) -->
-                <div class="hidden md:grid grid-cols-[1.6fr_0.6fr_0.55fr_0.55fr_0.55fr_0.55fr_0.6fr_0.85fr_0.6fr_0.3fr] gap-1.5 px-2 text-[10px] uppercase tracking-widest text-brand-muted font-medium">
+                <div class="hidden md:grid grid-cols-[1.4fr_0.5fr_0.45fr_0.45fr_0.45fr_0.45fr_0.5fr_0.75fr_0.5fr_0.35fr] gap-1.5 px-2 text-[10px] uppercase tracking-widest text-brand-muted font-medium">
                     <div>Code (SKU)</div>
                     <div>Thick</div>
                     <div>"A"</div>
@@ -182,34 +182,34 @@ if (!empty($product['specifications'])) {
                 </div>
 
                 <template x-for="(row, i) in rows" :key="i">
-                    <div class="grid grid-cols-1 md:grid-cols-[1.6fr_0.6fr_0.55fr_0.55fr_0.55fr_0.55fr_0.6fr_0.85fr_0.6fr_0.3fr] gap-1.5 items-center bg-gray-50 rounded-xl p-2">
+                    <div class="grid grid-cols-1 md:grid-cols-[1.4fr_0.5fr_0.45fr_0.45fr_0.45fr_0.45fr_0.5fr_0.75fr_0.5fr_0.35fr] gap-1.5 items-center bg-gray-50 rounded-xl p-2">
                         <input type="text" :name="`specifications[${i}][code]`" x-model="row.code"
                                placeholder="RF-FRA-25-0001"
-                               class="border border-brand-line rounded-lg px-2.5 py-1.5 font-mono text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
+                               class="w-full border border-brand-line rounded-lg px-2 py-1.5 font-mono text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
                         <input type="text" :name="`specifications[${i}][thickness]`" x-model="row.thickness"
                                placeholder="50"
-                               class="border border-brand-line rounded-lg px-2.5 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
+                               class="w-full border border-brand-line rounded-lg px-2 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
                         <input type="text" :name="`specifications[${i}][a]`" x-model="row.a"
                                placeholder="500"
-                               class="border border-brand-line rounded-lg px-2.5 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
+                               class="w-full border border-brand-line rounded-lg px-2 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
                         <input type="text" :name="`specifications[${i}][b]`" x-model="row.b"
                                placeholder="500"
-                               class="border border-brand-line rounded-lg px-2.5 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
+                               class="w-full border border-brand-line rounded-lg px-2 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
                         <input type="text" :name="`specifications[${i}][c]`" x-model="row.c"
                                placeholder="2700"
-                               class="border border-brand-line rounded-lg px-2.5 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
+                               class="w-full border border-brand-line rounded-lg px-2 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
                         <input type="text" :name="`specifications[${i}][d]`" x-model="row.d"
                                placeholder="1200"
-                               class="border border-brand-line rounded-lg px-2.5 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
+                               class="w-full border border-brand-line rounded-lg px-2 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
                         <input type="text" :name="`specifications[${i}][pieces_per_box]`" x-model="row.pieces_per_box"
                                placeholder="14"
-                               class="border border-brand-line rounded-lg px-2.5 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
+                               class="w-full border border-brand-line rounded-lg px-2 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
                         <input type="text" :name="`specifications[${i}][coverage_area]`" x-model="row.coverage_area"
                                placeholder="3,96 m²"
-                               class="border border-brand-line rounded-lg px-2.5 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
+                               class="w-full border border-brand-line rounded-lg px-2 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
                         <input type="text" :name="`specifications[${i}][pet_bottles]`" x-model="row.pet_bottles"
                                placeholder="27"
-                               class="border border-brand-line rounded-lg px-2.5 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
+                               class="w-full border border-brand-line rounded-lg px-2 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
                         <div class="flex items-center gap-1 justify-end">
                             <button type="button" @click="duplicateRow(i)" title="Duplicar"
                                     class="w-8 h-8 rounded-lg text-brand-muted hover:text-brand-blue hover:bg-white transition flex items-center justify-center">
