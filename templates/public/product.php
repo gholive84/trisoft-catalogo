@@ -155,7 +155,7 @@ $primaryCategory = $categories[0] ?? null;
             </div>
             <!-- TABELA MULTI_PIECE — agrupada com header PIECE 1 | PIECE 2 | shared -->
             <div class="overflow-x-auto mb-10 border border-brand-line rounded-2xl">
-                <table class="text-xs md:text-sm min-w-[900px]">
+                <table class="w-full text-xs md:text-sm min-w-[900px]">
                     <thead class="border-b border-brand-line">
                         <tr class="text-xs uppercase tracking-widest bg-gray-50">
                             <th class="px-3 py-3"></th>
@@ -184,7 +184,7 @@ $primaryCategory = $categories[0] ?? null;
                     <tbody class="divide-y divide-brand-line bg-white">
                         <?php foreach ($specs as $row): ?>
                             <tr class="hover:bg-gray-50">
-                                <td class="px-3 py-2 font-mono text-[11px] text-brand-ink"><?= e((string) ($row['code'] ?? '—')) ?></td>
+                                <td class="px-3 py-2 font-mono text-brand-ink whitespace-nowrap"><?= e((string) ($row['code'] ?? '—')) ?></td>
                                 <td class="px-2 py-2"><?= e((string) ($row['thickness'] ?? '—')) ?></td>
                                 <td class="px-2 py-2 bg-blue-50/40 border-l-2 border-blue-200"><?= e((string) ($row['p1_a'] ?? '—')) ?></td>
                                 <td class="px-2 py-2 bg-blue-50/40"><?= e((string) ($row['p1_b'] ?? '—')) ?></td>
