@@ -137,8 +137,9 @@ $initialSelected = $selectedCats ?? [];
                                 <?= e($node['name']) ?>
                             </span>
                             <svg x-show="selectedCats.includes(<?= $id ?>)" x-cloak
-                                 class="w-3 h-3 text-brand-ink ml-2 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                 class="w-3.5 h-3.5 text-brand-ink ml-2 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"
+                                 aria-label="Remover filtro">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                             </svg>
                         </span>
                     </label>
