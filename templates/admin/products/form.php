@@ -41,12 +41,12 @@ if (!empty($product['specifications'])) {
     <?php endif; ?>
 </div>
 
-<form method="post" action="<?= e($action) ?>" enctype="multipart/form-data" class="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+<form method="post" action="<?= e($action) ?>" enctype="multipart/form-data" class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6">
     <?= csrf_field() ?>
     <?php if (!$isNew): ?><?= method_field('PUT') ?><?php endif; ?>
 
-    <!-- COLUNA ESQUERDA: dados -->
-    <div class="space-y-6">
+    <!-- COLUNA ESQUERDA: dados (min-w-0 evita que tabela larga estoure o grid) -->
+    <div class="space-y-6 min-w-0">
         <!-- Básico -->
         <div class="bg-white border border-brand-line rounded-2xl p-6 space-y-4">
             <h2 class="font-display font-semibold text-brand-ink">Informações básicas</h2>
@@ -164,7 +164,9 @@ if (!empty($product['specifications'])) {
                 </button>
             </div>
 
-            <div class="space-y-2">
+            <!-- Tabela com scroll horizontal interno: nao estoura largura do form -->
+            <div class="overflow-x-auto -mx-2 px-2">
+            <div class="space-y-2 md:min-w-[900px]">
                 <!-- Header (visual) -->
                 <div class="hidden md:grid grid-cols-[1.6fr_0.6fr_0.55fr_0.55fr_0.55fr_0.55fr_0.6fr_0.85fr_0.6fr_0.3fr] gap-1.5 px-2 text-[10px] uppercase tracking-widest text-brand-muted font-medium">
                     <div>Code (SKU)</div>
@@ -227,6 +229,7 @@ if (!empty($product['specifications'])) {
                     </div>
                 </template>
             </div>
+            </div><!-- /overflow-x-auto -->
 
             <div class="flex items-center justify-between pt-3 border-t border-brand-line">
                 <div class="text-xs text-brand-muted" x-text="`${rows.length} variação(ões)`"></div>

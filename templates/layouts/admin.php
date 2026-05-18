@@ -80,7 +80,7 @@
 
     <div class="flex-1 flex flex-col min-w-0 bg-brand-cream">
         <?php $this->partial('flash'); ?>
-        <main class="flex-1 p-6 lg:p-10 overflow-x-auto">
+        <main class="flex-1 p-6 lg:p-10 min-w-0">
             <?= $this->yield('content') ?>
         </main>
     </div>
