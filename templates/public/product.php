@@ -271,13 +271,21 @@ $primaryCategory = $categories[0] ?? null;
                     <thead class="border-b border-brand-line">
                         <tr class="text-xs uppercase tracking-widest text-brand-muted bg-gray-50">
                             <?php
+                            // Labels custom (spec_column_labels) sobrescrevem "A", "B", "C", "D".
+                            $customLabels = $product['spec_column_labels'] ?? null;
+                            if (is_string($customLabels)) $customLabels = json_decode($customLabels, true);
+                            if (!is_array($customLabels)) $customLabels = [];
+                            $labelA = !empty($customLabels['a']) ? $customLabels['a'] : '"A"';
+                            $labelB = !empty($customLabels['b']) ? $customLabels['b'] : '"B"';
+                            $labelC = !empty($customLabels['c']) ? $customLabels['c'] : '"C"';
+                            $labelD = !empty($customLabels['d']) ? $customLabels['d'] : '"D"';
                             $columns = [
                                 'code'           => ['Code',        null],
                                 'thickness'      => ['Thickness',   'mm'],
-                                'a'              => ['"A"',         'mm'],
-                                'b'              => ['"B"',         'mm'],
-                                'c'              => ['"C"',         'mm'],
-                                'd'              => ['"D"',         'mm'],
+                                'a'              => [$labelA,       'mm'],
+                                'b'              => [$labelB,       'mm'],
+                                'c'              => [$labelC,       'mm'],
+                                'd'              => [$labelD,       'mm'],
                                 'pieces_per_box' => ['Peças/cx',    null],
                                 'coverage_area'  => ['Cobertura',   null],
                                 'pet_bottles'    => ['PET Bottles', null],

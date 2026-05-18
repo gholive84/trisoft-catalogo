@@ -287,6 +287,7 @@ final class ProductController
             'description' => '',
             'specifications' => null,
             'spec_layout' => 'simple',
+            'spec_column_labels' => null,
             'price' => 0,
             'cost' => null,
             'stock_quantity' => null,
@@ -355,6 +356,20 @@ final class ProductController
             if ($filtered !== []) $specifications = $filtered;
         }
 
+        // Labels customizados das colunas A-D (apenas no layout 'simple').
+        // Form posta spec_column_labels[a]=..., spec_column_labels[b]=..., etc.
+        // Strings vazias sao filtradas; null se nenhum label foi definido.
+        $specColumnLabels = null;
+        if ($specLayout === 'simple') {
+            $rawLabels = (array) $request->post('spec_column_labels', []);
+            $labels = [];
+            foreach (['a', 'b', 'c', 'd'] as $k) {
+                $v = trim((string) ($rawLabels[$k] ?? ''));
+                if ($v !== '') $labels[$k] = $v;
+            }
+            if ($labels !== []) $specColumnLabels = $labels;
+        }
+
         return [
             'sku'               => trim((string) $request->post('sku', '')),
             'name'              => $name,
@@ -364,6 +379,7 @@ final class ProductController
             'description'       => trim((string) $request->post('description', '')),
             'specifications'    => $specifications,
             'spec_layout'       => $specLayout,
+            'spec_column_labels'=> $specColumnLabels,
             'price'             => (float) str_replace(',', '.', (string) $request->post('price', '0')),
             'cost'              => $request->post('cost') !== null && $request->post('cost') !== ''
                                     ? (float) str_replace(',', '.', (string) $request->post('cost')) : null,
@@ -415,10 +431,12 @@ final class ProductController
         $stmt = $this->pdo->prepare(
             "INSERT INTO products
                 (sku, name, subtitle, slug, short_description, description, specifications, spec_layout,
+                 spec_column_labels,
                  price, cost, stock_quantity, weight_kg, width_cm, height_cm, length_cm,
                  is_active, is_featured, meta_title, meta_description)
              VALUES
                 (:sku, :name, :sub, :slug, :short, :desc, :specs, :slayout,
+                 :slabels,
                  :price, :cost, :stock, :wkg, :w, :h, :l,
                  :active, :featured, :mt, :md)"
         );
@@ -428,6 +446,7 @@ final class ProductController
             'desc' => $d['description'] ?: null,
             'specs' => $d['specifications'] !== null ? json_encode($d['specifications'], JSON_UNESCAPED_UNICODE) : null,
             'slayout' => $d['spec_layout'] ?? 'simple',
+            'slabels' => !empty($d['spec_column_labels']) ? json_encode($d['spec_column_labels'], JSON_UNESCAPED_UNICODE) : null,
             'price' => $d['price'], 'cost' => $d['cost'], 'stock' => $d['stock_quantity'],
             'wkg' => $d['weight_kg'], 'w' => $d['width_cm'], 'h' => $d['height_cm'], 'l' => $d['length_cm'],
             'active' => $d['is_active'], 'featured' => $d['is_featured'],
@@ -443,6 +462,7 @@ final class ProductController
                 sku = :sku, name = :name, subtitle = :sub, slug = :slug,
                 short_description = :short, description = :desc, specifications = :specs,
                 spec_layout = :slayout,
+                spec_column_labels = :slabels,
                 price = :price, cost = :cost, stock_quantity = :stock,
                 weight_kg = :wkg, width_cm = :w, height_cm = :h, length_cm = :l,
                 is_active = :active, is_featured = :featured,
@@ -456,6 +476,7 @@ final class ProductController
             'desc' => $d['description'] ?: null,
             'specs' => $d['specifications'] !== null ? json_encode($d['specifications'], JSON_UNESCAPED_UNICODE) : null,
             'slayout' => $d['spec_layout'] ?? 'simple',
+            'slabels' => !empty($d['spec_column_labels']) ? json_encode($d['spec_column_labels'], JSON_UNESCAPED_UNICODE) : null,
             'price' => $d['price'], 'cost' => $d['cost'], 'stock' => $d['stock_quantity'],
             'wkg' => $d['weight_kg'], 'w' => $d['width_cm'], 'h' => $d['height_cm'], 'l' => $d['length_cm'],
             'active' => $d['is_active'], 'featured' => $d['is_featured'],

@@ -145,11 +145,23 @@ if (!empty($product['specifications'])) {
         $simpleEmpty   = '{"code":"","thickness":"","a":"","b":"","c":"","d":"","pieces_per_box":"","coverage_area":"","pet_bottles":""}';
         $multiEmpty    = '{"code":"","thickness":"","p1_a":"","p1_b":"","p1_c":"","p1_pieces":"","p1_pet":"","p2_a":"","p2_b":"","p2_c":"","p2_pieces":"","pieces_per_box":"","coverage_area":"","pet_bottles":""}';
         $wallCeilEmpty = '{"code":"","thickness":"","wall_height":"","wall_width":"","wall_length":"","ceiling_height":"","ceiling_width":"","ceiling_length":"","pieces_per_box":"","wall_coverage":"","ceiling_coverage":"","pet_bottles":""}';
+
+        // Labels customizados para colunas A/B/C/D (layout simples).
+        $columnLabelsArr = $product['spec_column_labels'] ?? null;
+        if (is_string($columnLabelsArr)) $columnLabelsArr = json_decode($columnLabelsArr, true);
+        if (!is_array($columnLabelsArr)) $columnLabelsArr = [];
+        $columnLabelsJson = htmlspecialchars(json_encode([
+            'a' => $columnLabelsArr['a'] ?? '',
+            'b' => $columnLabelsArr['b'] ?? '',
+            'c' => $columnLabelsArr['c'] ?? '',
+            'd' => $columnLabelsArr['d'] ?? '',
+        ], JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
         ?>
         <div class="bg-white border border-brand-line rounded-2xl p-6 space-y-3"
              x-data='{
                 layout: "<?= e($specLayout) ?>",
                 rows: <?= $specsJsonInline ?: "[]" ?>,
+                columnLabels: <?= $columnLabelsJson ?>,
                 addRow() {
                     let empty;
                     if (this.layout === "multi_piece") empty = <?= $multiEmpty ?>;
@@ -198,10 +210,40 @@ if (!empty($product['specifications'])) {
 
             <!-- LAYOUT SIMPLES -->
             <div x-show="layout === 'simple'" class="overflow-x-auto -mx-2 px-2">
+            <!-- Rotulos custom das colunas A/B/C/D (opcional) -->
+            <div class="md:min-w-[760px] mb-3 p-3 bg-gray-50 rounded-xl border border-brand-line/50">
+                <div class="flex items-center gap-2 mb-2 text-[11px] text-brand-muted">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    <span class="font-medium">Rótulos das colunas (opcional)</span>
+                    <span class="text-[10px] italic">— deixe vazio para usar "A", "B", "C", "D" padrão</span>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <div>
+                        <label class="block text-[10px] uppercase tracking-widest text-brand-muted mb-0.5">Coluna A</label>
+                        <input type="text" name="spec_column_labels[a]" x-model="columnLabels.a" placeholder="Diameter" class="w-full border border-brand-line rounded-lg px-2 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] uppercase tracking-widest text-brand-muted mb-0.5">Coluna B</label>
+                        <input type="text" name="spec_column_labels[b]" x-model="columnLabels.b" placeholder="Length" class="w-full border border-brand-line rounded-lg px-2 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] uppercase tracking-widest text-brand-muted mb-0.5">Coluna C</label>
+                        <input type="text" name="spec_column_labels[c]" x-model="columnLabels.c" placeholder="Height" class="w-full border border-brand-line rounded-lg px-2 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] uppercase tracking-widest text-brand-muted mb-0.5">Coluna D</label>
+                        <input type="text" name="spec_column_labels[d]" x-model="columnLabels.d" placeholder="" class="w-full border border-brand-line rounded-lg px-2 py-1.5 text-xs focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition">
+                    </div>
+                </div>
+            </div>
             <div class="space-y-2 md:min-w-[760px]">
                 <div class="hidden md:grid grid-cols-[1.4fr_0.5fr_0.45fr_0.45fr_0.45fr_0.45fr_0.5fr_0.75fr_0.5fr_0.35fr] gap-1.5 px-2 text-[10px] uppercase tracking-widest text-brand-muted font-medium">
-                    <div>Code (SKU)</div><div>Thick</div><div>"A"</div><div>"B"</div>
-                    <div>"C"</div><div>"D"</div><div>Pç/cx</div><div>Cobertura</div><div>PET</div><div></div>
+                    <div>Code (SKU)</div><div>Thick</div>
+                    <div x-text="columnLabels.a || '&quot;A&quot;'"></div>
+                    <div x-text="columnLabels.b || '&quot;B&quot;'"></div>
+                    <div x-text="columnLabels.c || '&quot;C&quot;'"></div>
+                    <div x-text="columnLabels.d || '&quot;D&quot;'"></div>
+                    <div>Pç/cx</div><div>Cobertura</div><div>PET</div><div></div>
                 </div>
                 <template x-for="(row, i) in rows" :key="'s-' + i">
                     <div class="grid grid-cols-1 md:grid-cols-[1.4fr_0.5fr_0.45fr_0.45fr_0.45fr_0.45fr_0.5fr_0.75fr_0.5fr_0.35fr] gap-1.5 items-center bg-gray-50 rounded-xl p-2">
