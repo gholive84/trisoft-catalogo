@@ -16,6 +16,9 @@ DirectoryIndex disabled
     RewriteRule ^assets/(.*)$ public/assets/$1 [L]
     RewriteRule ^uploads/(.*)$ public/uploads/$1 [L]
 
+    # Endpoint de deploy via URL (protegido por token)
+    RewriteRule ^_deploy\.php$ public/_deploy.php [L]
+
     # Se a requisição já é para /public/, deixa o public/.htaccess cuidar
     RewriteCond %{REQUEST_URI} /public/
     RewriteRule ^ - [L]
