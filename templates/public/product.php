@@ -154,8 +154,20 @@ $primaryCategory = $categories[0] ?? null;
                             'coverage_area'  => 'Cobertura',
                             'pet_bottles'    => 'PET Bottles',
                         ];
-                        $firstSpec = $specs[0] ?? [];
-                        $presentColumns = array_intersect_key($columns, $firstSpec);
+                        // Mostra apenas colunas que tem valor em PELO MENOS uma linha
+                        // (esconde colunas totalmente vazias como C/D/Cobertura quando o produto nao tem)
+                        $presentColumns = [];
+                        foreach ($columns as $key => $label) {
+                            // 'code' sempre aparece
+                            if ($key === 'code') { $presentColumns[$key] = $label; continue; }
+                            foreach ($specs as $row) {
+                                $v = $row[$key] ?? null;
+                                if ($v !== null && $v !== '' && $v !== 0 && $v !== '0') {
+                                    $presentColumns[$key] = $label;
+                                    break;
+                                }
+                            }
+                        }
                         foreach ($presentColumns as $key => $label): ?>
                             <th class="px-4 py-3 text-left font-medium"><?= e($label) ?></th>
                         <?php endforeach; ?>
