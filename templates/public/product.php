@@ -138,57 +138,106 @@ $primaryCategory = $categories[0] ?? null;
             </div>
         <?php endif; ?>
 
-        <div class="overflow-x-auto mb-10 border border-brand-line rounded-2xl">
-            <table class="w-full text-sm">
-                <thead class="border-b border-brand-line">
-                    <tr class="text-xs uppercase tracking-widest text-brand-muted bg-gray-50">
-                        <?php
-                        // [label_principal, unidade_opcional] — unidade renderizada menor
-                        $columns = [
-                            'code'           => ['Code',        null],
-                            'thickness'      => ['Thickness',   'mm'],
-                            'a'              => ['"A"',         'mm'],
-                            'b'              => ['"B"',         'mm'],
-                            'c'              => ['"C"',         'mm'],
-                            'd'              => ['"D"',         'mm'],
-                            'pieces_per_box' => ['Peças/cx',    null],
-                            'coverage_area'  => ['Cobertura',   null],
-                            'pet_bottles'    => ['PET Bottles', null],
-                        ];
-                        // Mostra apenas colunas que tem valor em PELO MENOS uma linha
-                        // (esconde colunas totalmente vazias como C/D/Cobertura quando o produto nao tem)
-                        $presentColumns = [];
-                        foreach ($columns as $key => $colDef) {
-                            // 'code' sempre aparece
-                            if ($key === 'code') { $presentColumns[$key] = $colDef; continue; }
-                            foreach ($specs as $row) {
-                                $v = $row[$key] ?? null;
-                                if ($v !== null && $v !== '' && $v !== 0 && $v !== '0') {
-                                    $presentColumns[$key] = $colDef;
-                                    break;
+        <?php $isMultiPiece = ($product['spec_layout'] ?? 'simple') === 'multi_piece'; ?>
+
+        <?php if ($isMultiPiece): ?>
+            <!-- TABELA MULTI_PIECE — agrupada com header PIECE 1 | PIECE 2 | shared -->
+            <div class="overflow-x-auto mb-10 border border-brand-line rounded-2xl">
+                <table class="text-xs md:text-sm min-w-[900px]">
+                    <thead class="border-b border-brand-line">
+                        <tr class="text-[10px] uppercase tracking-widest text-brand-muted bg-gray-50">
+                            <th class="px-3 py-2"></th>
+                            <th class="px-3 py-2"></th>
+                            <th colspan="5" class="px-2 py-2 text-center bg-blue-50 text-blue-700 border-l border-r border-blue-100">Peça 1</th>
+                            <th colspan="4" class="px-2 py-2 text-center bg-amber-50 text-amber-700 border-r border-amber-100">Peça 2</th>
+                            <th colspan="3" class="px-2 py-2 text-center"></th>
+                        </tr>
+                        <tr class="text-[10px] uppercase tracking-widest text-brand-muted bg-gray-50 border-t border-brand-line">
+                            <th class="px-3 py-2 text-left font-medium">Code</th>
+                            <th class="px-2 py-2 text-left font-medium">Thickness<span class="ml-1 text-[9px] opacity-60 font-normal lowercase">(mm)</span></th>
+                            <th class="px-2 py-2 text-left font-medium bg-blue-50/60 border-l border-blue-100">"A"<span class="ml-1 text-[9px] opacity-60 font-normal lowercase">(mm)</span></th>
+                            <th class="px-2 py-2 text-left font-medium bg-blue-50/60">"B"<span class="ml-1 text-[9px] opacity-60 font-normal lowercase">(mm)</span></th>
+                            <th class="px-2 py-2 text-left font-medium bg-blue-50/60">"C"<span class="ml-1 text-[9px] opacity-60 font-normal lowercase">(mm)</span></th>
+                            <th class="px-2 py-2 text-left font-medium bg-blue-50/60">Peças</th>
+                            <th class="px-2 py-2 text-left font-medium bg-blue-50/60 border-r border-blue-100">PET</th>
+                            <th class="px-2 py-2 text-left font-medium bg-amber-50/60">"A"<span class="ml-1 text-[9px] opacity-60 font-normal lowercase">(mm)</span></th>
+                            <th class="px-2 py-2 text-left font-medium bg-amber-50/60">"B"<span class="ml-1 text-[9px] opacity-60 font-normal lowercase">(mm)</span></th>
+                            <th class="px-2 py-2 text-left font-medium bg-amber-50/60">"C"<span class="ml-1 text-[9px] opacity-60 font-normal lowercase">(mm)</span></th>
+                            <th class="px-2 py-2 text-left font-medium bg-amber-50/60 border-r border-amber-100">Peças</th>
+                            <th class="px-2 py-2 text-left font-medium">Pç/cx</th>
+                            <th class="px-2 py-2 text-left font-medium">Cobertura</th>
+                            <th class="px-2 py-2 text-left font-medium">PET</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-brand-line bg-white">
+                        <?php foreach ($specs as $row): ?>
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-3 py-2 font-mono text-[11px] text-brand-ink"><?= e((string) ($row['code'] ?? '—')) ?></td>
+                                <td class="px-2 py-2"><?= e((string) ($row['thickness'] ?? '—')) ?></td>
+                                <td class="px-2 py-2 bg-blue-50/30 border-l border-blue-100"><?= e((string) ($row['p1_a'] ?? '—')) ?></td>
+                                <td class="px-2 py-2 bg-blue-50/30"><?= e((string) ($row['p1_b'] ?? '—')) ?></td>
+                                <td class="px-2 py-2 bg-blue-50/30"><?= e((string) ($row['p1_c'] ?? '—')) ?></td>
+                                <td class="px-2 py-2 bg-blue-50/30"><?= e((string) ($row['p1_pieces'] ?? '—')) ?></td>
+                                <td class="px-2 py-2 bg-blue-50/30 border-r border-blue-100"><?= e((string) ($row['p1_pet'] ?? '—')) ?></td>
+                                <td class="px-2 py-2 bg-amber-50/30"><?= e((string) ($row['p2_a'] ?? '—')) ?></td>
+                                <td class="px-2 py-2 bg-amber-50/30"><?= e((string) ($row['p2_b'] ?? '—')) ?></td>
+                                <td class="px-2 py-2 bg-amber-50/30"><?= e((string) ($row['p2_c'] ?? '—')) ?></td>
+                                <td class="px-2 py-2 bg-amber-50/30 border-r border-amber-100"><?= e((string) ($row['p2_pieces'] ?? '—')) ?></td>
+                                <td class="px-2 py-2"><?= e((string) ($row['pieces_per_box'] ?? '—')) ?></td>
+                                <td class="px-2 py-2 whitespace-nowrap"><?= e((string) ($row['coverage_area'] ?? '—')) ?></td>
+                                <td class="px-2 py-2"><?= e((string) ($row['pet_bottles'] ?? '—')) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php else: ?>
+            <div class="overflow-x-auto mb-10 border border-brand-line rounded-2xl">
+                <table class="w-full text-sm">
+                    <thead class="border-b border-brand-line">
+                        <tr class="text-xs uppercase tracking-widest text-brand-muted bg-gray-50">
+                            <?php
+                            $columns = [
+                                'code'           => ['Code',        null],
+                                'thickness'      => ['Thickness',   'mm'],
+                                'a'              => ['"A"',         'mm'],
+                                'b'              => ['"B"',         'mm'],
+                                'c'              => ['"C"',         'mm'],
+                                'd'              => ['"D"',         'mm'],
+                                'pieces_per_box' => ['Peças/cx',    null],
+                                'coverage_area'  => ['Cobertura',   null],
+                                'pet_bottles'    => ['PET Bottles', null],
+                            ];
+                            $presentColumns = [];
+                            foreach ($columns as $key => $colDef) {
+                                if ($key === 'code') { $presentColumns[$key] = $colDef; continue; }
+                                foreach ($specs as $row) {
+                                    $v = $row[$key] ?? null;
+                                    if ($v !== null && $v !== '' && $v !== 0 && $v !== '0') {
+                                        $presentColumns[$key] = $colDef;
+                                        break;
+                                    }
                                 }
                             }
-                        }
-                        foreach ($presentColumns as $key => [$label, $unit]): ?>
-                            <th class="px-4 py-3 text-left font-medium">
-                                <?= e($label) ?><?php if ($unit): ?><span class="ml-1 text-[10px] opacity-60 font-normal lowercase">(<?= e($unit) ?>)</span><?php endif; ?>
-                            </th>
-                        <?php endforeach; ?>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-brand-line bg-white">
-                    <?php foreach ($specs as $row): ?>
-                        <tr class="hover:bg-gray-50">
-                            <?php foreach ($presentColumns as $key => $_): ?>
-                                <td class="px-4 py-3 text-brand-ink">
-                                    <?= e((string) ($row[$key] ?? '—')) ?>
-                                </td>
+                            foreach ($presentColumns as $key => [$label, $unit]): ?>
+                                <th class="px-4 py-3 text-left font-medium">
+                                    <?= e($label) ?><?php if ($unit): ?><span class="ml-1 text-[10px] opacity-60 font-normal lowercase">(<?= e($unit) ?>)</span><?php endif; ?>
+                                </th>
                             <?php endforeach; ?>
                         </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
+                    </thead>
+                    <tbody class="divide-y divide-brand-line bg-white">
+                        <?php foreach ($specs as $row): ?>
+                            <tr class="hover:bg-gray-50">
+                                <?php foreach ($presentColumns as $key => $_): ?>
+                                    <td class="px-4 py-3 text-brand-ink"><?= e((string) ($row[$key] ?? '—')) ?></td>
+                                <?php endforeach; ?>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php endif; ?>
     <?php endif; ?>
 
     <?php if (can_see_prices()): ?>

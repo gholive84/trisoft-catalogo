@@ -280,6 +280,7 @@ final class ProductController
             'short_description' => '',
             'description' => '',
             'specifications' => null,
+            'spec_layout' => 'simple',
             'price' => 0,
             'cost' => null,
             'stock_quantity' => null,
@@ -303,36 +304,40 @@ final class ProductController
         $slug = trim((string) $request->post('slug', ''));
         if ($slug === '') $slug = slugify($name);
 
-        // Variações: novo formato (form dinâmico) — specifications[N][campo] array de arrays.
-        // Fallback: specifications_json (textarea) para retrocompat.
+        // Variações: form dinâmico — specifications[N][campo].
+        // Layout simples: code, thickness, a, b, c, d, pieces_per_box, coverage_area, pet_bottles
+        // Layout multi_piece: code, thickness, p1_a, p1_b, p1_c, p1_pieces, p1_pet,
+        //                     p2_a, p2_b, p2_c, p2_pieces, pieces_per_box, coverage_area, pet_bottles
+        $specLayout = trim((string) $request->post('spec_layout', 'simple'));
+        if (!in_array($specLayout, ['simple', 'multi_piece'], true)) $specLayout = 'simple';
+
+        $castInt = fn ($v) => is_numeric($v) ? (int) $v : trim((string) ($v ?? ''));
+
+        $simpleKeys = ['code', 'thickness', 'a', 'b', 'c', 'd', 'pieces_per_box', 'coverage_area', 'pet_bottles'];
+        $multiKeys  = ['code', 'thickness', 'p1_a', 'p1_b', 'p1_c', 'p1_pieces', 'p1_pet',
+                       'p2_a', 'p2_b', 'p2_c', 'p2_pieces', 'pieces_per_box', 'coverage_area', 'pet_bottles'];
+        $allowedKeys = $specLayout === 'multi_piece' ? $multiKeys : $simpleKeys;
+
         $specifications = null;
         $specsArray = (array) $request->post('specifications', []);
         if ($specsArray !== []) {
             $filtered = [];
             foreach ($specsArray as $row) {
                 if (!is_array($row)) continue;
-                // descarta linhas totalmente vazias
                 $nonEmpty = array_filter(array_map(fn ($v) => is_string($v) ? trim($v) : (string) $v, $row));
                 if ($nonEmpty === []) continue;
-                $filtered[] = [
-                    'code'           => trim((string) ($row['code'] ?? '')),
-                    'thickness'      => is_numeric($row['thickness'] ?? null) ? (int) $row['thickness'] : trim((string) ($row['thickness'] ?? '')),
-                    'a'              => is_numeric($row['a'] ?? null) ? (int) $row['a'] : trim((string) ($row['a'] ?? '')),
-                    'b'              => is_numeric($row['b'] ?? null) ? (int) $row['b'] : trim((string) ($row['b'] ?? '')),
-                    'c'              => is_numeric($row['c'] ?? null) ? (int) $row['c'] : trim((string) ($row['c'] ?? '')),
-                    'd'              => is_numeric($row['d'] ?? null) ? (int) $row['d'] : trim((string) ($row['d'] ?? '')),
-                    'pieces_per_box' => is_numeric($row['pieces_per_box'] ?? null) ? (int) $row['pieces_per_box'] : trim((string) ($row['pieces_per_box'] ?? '')),
-                    'coverage_area'  => trim((string) ($row['coverage_area'] ?? '')),
-                    'pet_bottles'    => is_numeric($row['pet_bottles'] ?? null) ? (int) $row['pet_bottles'] : trim((string) ($row['pet_bottles'] ?? '')),
-                ];
+                $out = [];
+                foreach ($allowedKeys as $k) {
+                    $v = $row[$k] ?? '';
+                    if ($k === 'code' || $k === 'coverage_area') {
+                        $out[$k] = trim((string) $v);
+                    } else {
+                        $out[$k] = $castInt($v);
+                    }
+                }
+                $filtered[] = $out;
             }
             if ($filtered !== []) $specifications = $filtered;
-        } else {
-            $specsRaw = trim((string) $request->post('specifications_json', ''));
-            if ($specsRaw !== '') {
-                $decoded = json_decode($specsRaw, true);
-                if (is_array($decoded)) $specifications = $decoded;
-            }
         }
 
         return [
@@ -343,6 +348,7 @@ final class ProductController
             'short_description' => trim((string) $request->post('short_description', '')),
             'description'       => trim((string) $request->post('description', '')),
             'specifications'    => $specifications,
+            'spec_layout'       => $specLayout,
             'price'             => (float) str_replace(',', '.', (string) $request->post('price', '0')),
             'cost'              => $request->post('cost') !== null && $request->post('cost') !== ''
                                     ? (float) str_replace(',', '.', (string) $request->post('cost')) : null,
@@ -393,11 +399,11 @@ final class ProductController
     {
         $stmt = $this->pdo->prepare(
             "INSERT INTO products
-                (sku, name, subtitle, slug, short_description, description, specifications,
+                (sku, name, subtitle, slug, short_description, description, specifications, spec_layout,
                  price, cost, stock_quantity, weight_kg, width_cm, height_cm, length_cm,
                  is_active, is_featured, meta_title, meta_description)
              VALUES
-                (:sku, :name, :sub, :slug, :short, :desc, :specs,
+                (:sku, :name, :sub, :slug, :short, :desc, :specs, :slayout,
                  :price, :cost, :stock, :wkg, :w, :h, :l,
                  :active, :featured, :mt, :md)"
         );
@@ -406,6 +412,7 @@ final class ProductController
             'slug' => $d['slug'], 'short' => $d['short_description'] ?: null,
             'desc' => $d['description'] ?: null,
             'specs' => $d['specifications'] !== null ? json_encode($d['specifications'], JSON_UNESCAPED_UNICODE) : null,
+            'slayout' => $d['spec_layout'] ?? 'simple',
             'price' => $d['price'], 'cost' => $d['cost'], 'stock' => $d['stock_quantity'],
             'wkg' => $d['weight_kg'], 'w' => $d['width_cm'], 'h' => $d['height_cm'], 'l' => $d['length_cm'],
             'active' => $d['is_active'], 'featured' => $d['is_featured'],
@@ -420,6 +427,7 @@ final class ProductController
             "UPDATE products SET
                 sku = :sku, name = :name, subtitle = :sub, slug = :slug,
                 short_description = :short, description = :desc, specifications = :specs,
+                spec_layout = :slayout,
                 price = :price, cost = :cost, stock_quantity = :stock,
                 weight_kg = :wkg, width_cm = :w, height_cm = :h, length_cm = :l,
                 is_active = :active, is_featured = :featured,
@@ -432,6 +440,7 @@ final class ProductController
             'slug' => $d['slug'], 'short' => $d['short_description'] ?: null,
             'desc' => $d['description'] ?: null,
             'specs' => $d['specifications'] !== null ? json_encode($d['specifications'], JSON_UNESCAPED_UNICODE) : null,
+            'slayout' => $d['spec_layout'] ?? 'simple',
             'price' => $d['price'], 'cost' => $d['cost'], 'stock' => $d['stock_quantity'],
             'wkg' => $d['weight_kg'], 'w' => $d['width_cm'], 'h' => $d['height_cm'], 'l' => $d['length_cm'],
             'active' => $d['is_active'], 'featured' => $d['is_featured'],
