@@ -507,6 +507,23 @@ final class ProductController
             if ($current !== '' && $current !== $newPath) {
                 $this->uploads->delete('products/' . $current);
             }
+
+            // Como o admin tem APENAS UM campo de imagem técnica (dimensions OU modulação,
+            // nunca ambos), ao subir/remover dimensions tambem limpa modulation
+            // (e vice-versa) pro public mostrar SEMPRE a mais recente.
+            if ($hasUpload || $remove) {
+                $otherColumn = $column === 'dimensions_image_path'
+                    ? 'modulation_image_path'
+                    : 'dimensions_image_path';
+                $stmt2 = $this->pdo->prepare("SELECT {$otherColumn} FROM products WHERE id = ?");
+                $stmt2->execute([$productId]);
+                $otherCurrent = (string) $stmt2->fetchColumn();
+                if ($otherCurrent !== '') {
+                    $this->pdo->prepare("UPDATE products SET {$otherColumn} = NULL WHERE id = ?")
+                        ->execute([$productId]);
+                    $this->uploads->delete('products/' . $otherCurrent);
+                }
+            }
         }
     }
 

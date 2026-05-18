@@ -234,16 +234,15 @@ if (!empty($product['specifications'])) {
             </div>
         </div>
 
-        <!-- Imagens técnicas (dimensões e modulação) -->
+        <!-- Imagem técnica (dimensões OU módulos — aparece acima da tabela na página pública) -->
         <div class="bg-white border border-brand-line rounded-2xl p-6 space-y-5">
             <div>
-                <h2 class="font-display font-semibold text-brand-ink">Imagens técnicas</h2>
-                <p class="text-xs text-brand-muted mt-1">Diagramas extraídos do PDF. Faça upload, arraste, ou cole da área de trabalho para substituir.</p>
+                <h2 class="font-display font-semibold text-brand-ink">Imagem técnica</h2>
+                <p class="text-xs text-brand-muted mt-1">Dimensões ou módulos — a imagem que aparece acima da tabela de SKUs na página do produto.</p>
             </div>
 
             <?php foreach ([
-                ['key' => 'dimensions_image_path', 'label' => 'Diagrama de dimensões',  'hint' => 'PNG/JPG com cotas "A" e "B" — aparece na aba "Dimensões" da página do produto.'],
-                ['key' => 'modulation_image_path', 'label' => 'Sugestões de modulação', 'hint' => 'PNG/JPG com mini-diagramas das modulações — aparece na seção "Modulação".'],
+                ['key' => 'dimensions_image_path', 'label' => 'Dimensões ou Módulos',  'hint' => 'PNG/JPG com cotas, módulos ou diagrama técnico. Faça upload, arraste ou cole da área de trabalho.'],
             ] as $tech): ?>
                 <?php $path = $product[$tech['key']] ?? null; ?>
                 <?php $originalUrl = $path ? upload_url('products/' . $path) : ''; ?>

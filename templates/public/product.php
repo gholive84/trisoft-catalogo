@@ -120,29 +120,21 @@ $primaryCategory = $categories[0] ?? null;
     <?php endif; ?>
 
     <?php if (!empty($specs)): ?>
-        <!-- Imagem técnica de dimensões (quando o PDF tem o desenho com cotas) -->
-        <?php if (!empty($product['dimensions_image_path'])): ?>
+        <?php
+        // Imagem técnica (Dimensões ou Módulos) acima da tabela.
+        // Prioridade: dimensions_image_path (novo padrão); fallback para
+        // modulation_image_path (legacy de produtos importados antigamente).
+        $techImage = $product['dimensions_image_path']
+            ?: ($product['modulation_image_path'] ?? null);
+        ?>
+        <?php if (!empty($techImage)): ?>
             <div class="text-center mb-8">
-                <div class="text-xs uppercase tracking-widest text-brand-muted font-medium mb-4">Dimensões</div>
-                <img src="<?= e(upload_url('products/' . $product['dimensions_image_path'])) ?>"
-                     alt="Diagrama de dimensões"
+                <div class="text-xs uppercase tracking-widest text-brand-muted font-medium mb-4">Dimensões / Módulos</div>
+                <img src="<?= e(upload_url('products/' . $techImage)) ?>"
+                     alt="Diagrama técnico"
                      class="max-w-full mx-auto"
-                     style="max-height: 260px;"
+                     style="max-height: 320px;"
                      loading="lazy">
-            </div>
-        <?php endif; ?>
-
-        <!-- Sugestões de Modulação (apenas se o PDF tinha) -->
-        <?php if (!empty($product['modulation_image_path'])): ?>
-            <div class="text-center mb-6">
-                <div class="text-xs uppercase tracking-widest text-brand-muted font-medium">Sugestões de Modulação</div>
-                <div class="mt-5">
-                    <img src="<?= e(upload_url('products/' . $product['modulation_image_path'])) ?>"
-                         alt="Sugestões de modulação"
-                         class="max-w-full mx-auto"
-                         style="max-height: 200px;"
-                         loading="lazy">
-                </div>
             </div>
         <?php endif; ?>
 
