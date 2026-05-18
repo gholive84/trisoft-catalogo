@@ -39,6 +39,7 @@ final class ProductController
     {
         $q       = trim((string) $request->query('q', ''));
         $status  = (string) $request->query('status', '');
+        $layout  = (string) $request->query('layout', '');
         $page    = max(1, (int) $request->query('page', 1));
         $perPage = 25;
         $offset  = ($page - 1) * $perPage;
@@ -57,6 +58,10 @@ final class ProductController
         if ($status === 'active')   $where .= " AND p.is_active = 1";
         if ($status === 'inactive') $where .= " AND p.is_active = 0";
         if ($status === 'featured') $where .= " AND p.is_featured = 1";
+        if (in_array($layout, ['simple', 'multi_piece', 'wall_ceiling'], true)) {
+            $where .= " AND p.spec_layout = :layout";
+            $params['layout'] = $layout;
+        }
 
         $countStmt = $this->pdo->prepare("SELECT COUNT(*) FROM products p WHERE {$where}");
         $countStmt->execute($params);
@@ -79,6 +84,7 @@ final class ProductController
             'total'    => $total,
             'q'        => $q,
             'status'   => $status,
+            'layout'   => $layout,
             'page'     => $page,
             'perPage'  => $perPage,
             'lastPage' => max(1, (int) ceil($total / $perPage)),

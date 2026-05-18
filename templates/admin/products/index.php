@@ -24,6 +24,12 @@
         <option value="inactive" <?= $status==='inactive'?'selected':'' ?>>Inativos</option>
         <option value="featured" <?= $status==='featured'?'selected':'' ?>>Destaques</option>
     </select>
+    <select name="layout" class="bg-gray-100 border border-transparent rounded-full px-4 py-2 text-sm focus:bg-white focus:border-brand-line" title="Tabela de Variações">
+        <option value="">Tabela: todas</option>
+        <option value="simple"       <?= ($layout ?? '')==='simple'      ?'selected':'' ?>>Simples</option>
+        <option value="multi_piece"  <?= ($layout ?? '')==='multi_piece' ?'selected':'' ?>>2 peças</option>
+        <option value="wall_ceiling" <?= ($layout ?? '')==='wall_ceiling'?'selected':'' ?>>Parede + Teto</option>
+    </select>
     <button class="bg-brand-ink text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-black transition">Filtrar</button>
 </form>
 
@@ -95,7 +101,7 @@
     <?php $this->partial('pagination', [
         'pagination' => ['page' => $page, 'lastPage' => $lastPage, 'perPage' => $perPage, 'total' => $total],
         'baseUrl'    => url('admin/produtos'),
-        'query'      => ['q' => $q, 'status' => $status],
+        'query'      => ['q' => $q, 'status' => $status, 'layout' => $layout],
     ]); ?>
 <?php endif; ?>
 <?php $this->endSection(); ?>
