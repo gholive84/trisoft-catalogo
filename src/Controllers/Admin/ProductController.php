@@ -460,6 +460,22 @@ final class ProductController
             'modulation_image_path' => 'mod',
         ];
 
+        // Diagnostico: o que chegou em $_FILES p/ tech images
+        $debug = [];
+        foreach ($fields as $column => $_) {
+            $u = $_FILES[$column] ?? null;
+            if (is_array($u)) {
+                $debug[$column] = [
+                    'name'  => $u['name']  ?? '',
+                    'size'  => $u['size']  ?? 0,
+                    'error' => $u['error'] ?? null,
+                ];
+            } else {
+                $debug[$column] = '(ausente em $_FILES)';
+            }
+        }
+        Logger::info('handleTechnicalImages: $_FILES recebidos', ['product_id' => $productId, 'files' => $debug]);
+
         foreach ($fields as $column => $suffix) {
             $remove   = (bool) $request->post($column . '_remove', false);
             $uploaded = $_FILES[$column] ?? null;

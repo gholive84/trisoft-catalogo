@@ -342,14 +342,23 @@ if (!empty($product['specifications'])) {
                                 for (const type of item.types) {
                                     if (type.startsWith('image/')) {
                                         const blob = await item.getType(type);
-                                        const ext = type.split('/')[1] || 'png';
+                                        // Apenas extensoes que o backend aceita
+                                        const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+                                        if (!validTypes.includes(type)) {
+                                            this.pasteError = 'Formato ' + type + ' não suportado. Use PNG, JPEG ou WebP.';
+                                            return;
+                                        }
+                                        const ext = type === 'image/jpeg' ? 'jpg' : type.split('/')[1];
                                         const ts = new Date().toISOString().replace(/[:.]/g, '-');
                                         const file = new File([blob], `paste-${ts}.${ext}`, { type });
                                         // Sincroniza com o input file via DataTransfer
                                         const dt = new DataTransfer();
                                         dt.items.add(file);
                                         this.$refs.fileInput.files = dt.files;
+                                        // Dispara change para qualquer listener
+                                        this.$refs.fileInput.dispatchEvent(new Event('change', { bubbles: true }));
                                         this.setFile(file);
+                                        console.log('[techImagePicker] colou:', file.name, file.size, 'bytes, type=' + type);
                                         return;
                                     }
                                 }
