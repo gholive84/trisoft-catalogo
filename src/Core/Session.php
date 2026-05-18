@@ -32,6 +32,17 @@ final class Session
         ]);
 
         session_start();
+
+        // Two-phase flash p/ _old: flashInput escreve em _old_next; na PRÓXIMA
+        // request, copiamos para _old (1x) e descartamos. Assim old() so existe
+        // por 1 request após flashInput, evitando "form vazio fantasma" quando
+        // user salva, navega, volta ao edit e ainda vê dados antigos.
+        if (isset($_SESSION['_old_next'])) {
+            $_SESSION['_old'] = $_SESSION['_old_next'];
+            unset($_SESSION['_old_next']);
+        } else {
+            unset($_SESSION['_old']);
+        }
     }
 
     public static function get(string $key, mixed $default = null): mixed
@@ -116,11 +127,12 @@ final class Session
 
     public static function flashInput(array $input): void
     {
-        $_SESSION['_old'] = $input;
+        // Grava em _old_next; será movido p/ _old apenas na próxima request (1x)
+        $_SESSION['_old_next'] = $input;
     }
 
     public static function clearOld(): void
     {
-        unset($_SESSION['_old']);
+        unset($_SESSION['_old'], $_SESSION['_old_next']);
     }
 }
