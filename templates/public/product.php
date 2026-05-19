@@ -229,10 +229,11 @@ $primaryCategory = $categories[0] ?? null;
                             <tr class="hover:bg-gray-50">
                                 <?php foreach ($visibleCols as $col):
                                     $cellClass = $col['color'] && isset($flexColorCell[$col['color']]) ? $flexColorCell[$col['color']] : '';
+                                    $isCode = $col['key'] === 'code';
                                     $val = $row[$col['key']] ?? '';
                                     if ($val === '' || $val === null) $val = '—';
                                 ?>
-                                    <td class="px-3 py-2 text-brand-ink <?= e($cellClass) ?>"><?= e((string) $val) ?></td>
+                                    <td class="px-3 py-2 text-brand-ink <?= e($cellClass) ?><?= $isCode ? ' font-mono whitespace-nowrap' : '' ?>"><?= e((string) $val) ?></td>
                                 <?php endforeach; ?>
                             </tr>
                         <?php endforeach; ?>
@@ -417,7 +418,7 @@ $primaryCategory = $categories[0] ?? null;
                         <?php foreach ($specs as $row): ?>
                             <tr class="hover:bg-gray-50">
                                 <?php foreach ($presentColumns as $key => $_): ?>
-                                    <td class="px-4 py-3 text-brand-ink"><?= e((string) ($row[$key] ?? '—')) ?></td>
+                                    <td class="px-4 py-3 text-brand-ink<?= $key === 'code' ? ' font-mono whitespace-nowrap' : '' ?>"><?= e((string) ($row[$key] ?? '—')) ?></td>
                                 <?php endforeach; ?>
                             </tr>
                         <?php endforeach; ?>
