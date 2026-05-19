@@ -58,7 +58,7 @@ final class ProductController
         if ($status === 'active')   $where .= " AND p.is_active = 1";
         if ($status === 'inactive') $where .= " AND p.is_active = 0";
         if ($status === 'featured') $where .= " AND p.is_featured = 1";
-        if (in_array($layout, ['simple', 'multi_piece', 'wall_ceiling'], true)) {
+        if (in_array($layout, ['simple', 'multi_piece', 'wall_ceiling', 'flexible'], true)) {
             $where .= " AND p.spec_layout = :layout";
             $params['layout'] = $layout;
         }

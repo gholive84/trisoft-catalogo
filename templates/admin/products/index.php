@@ -29,6 +29,7 @@
         <option value="simple"       <?= ($layout ?? '')==='simple'      ?'selected':'' ?>>Simples</option>
         <option value="multi_piece"  <?= ($layout ?? '')==='multi_piece' ?'selected':'' ?>>2 peças</option>
         <option value="wall_ceiling" <?= ($layout ?? '')==='wall_ceiling'?'selected':'' ?>>Parede + Teto</option>
+        <option value="flexible"     <?= ($layout ?? '')==='flexible'    ?'selected':'' ?>>Flexível</option>
     </select>
     <button class="bg-brand-ink text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-black transition">Filtrar</button>
 </form>
